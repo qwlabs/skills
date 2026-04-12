@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test-sample</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;background:#f5f7fa}
+        .layout{display:flex;min-height:100vh}
+        .sidebar{width:260px;background:#1a1a2e;color:#fff;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto;transition:width 0.3s ease;z-index:100}
+        .sidebar.collapsed{width:0;overflow:hidden}
+        .sidebar-title{padding:20px;font-size:18px;font-weight:600;border-bottom:1px solid #2d2d44;display:flex;justify-content:space-between;align-items:center}
+        .sidebar-toggle-inline{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:5px;border-radius:4px;transition:background 0.2s}
+        .sidebar-toggle-inline:hover{background:rgba(255,255,255,0.1)}
+        .sidebar-toggle-floating{position:fixed;left:10px;top:10px;z-index:1000;background:#1a1a2e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:18px;padding:8px 12px;display:none;transition:background 0.2s}
+        .sidebar-toggle-floating:hover{background:#2d2d44}
+        .sidebar-toggle-floating.visible{display:block}
+        .toc{list-style:none;padding:0}
+        .toc-item{padding:0}
+        .toc-group{margin-top:12px;padding:0 10px}
+        .toc-group-title{font-size:12px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:15px 0 8px 0;padding-left:10px;border-left:2px solid #0066cc}
+        .toc-link{display:block;padding:8px 20px 8px 35px;color:#aaa;text-decoration:none;font-size:13px;border-left:3px solid transparent;transition:all 0.2s}
+        .toc-link:hover{color:#fff;background:rgba(255,255,255,0.05)}
+        .toc-link.active{color:#fff;background:rgba(0,102,204,0.2);border-left-color:#0066cc}
+        .main{flex:1;margin-left:260px;padding:40px;max-width:calc(100% - 260px);transition:margin-left 0.3s ease,max-width 0.3s ease}
+        .main.expanded{margin-left:0;max-width:100%}
+        .api-section{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:30px;overflow:hidden}
+        .api-title{background:linear-gradient(135deg,#1a1a2e 0%,#2d2d44 100%);color:#fff;padding:20px 25px;font-size:20px;font-weight:600}
+        .meta-section{padding:20px 25px;display:flex;flex-wrap:wrap;gap:12px;border-bottom:1px solid #eee;background:#fafbfc}
+        .meta-block{display:flex;flex-direction:column;gap:6px;padding:12px 16px;background:#fff;border-radius:6px;border:1px solid #e8e8e8;min-width:120px}
+        .meta-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px}
+        .meta-value{font-size:15px;font-weight:600;color:#333}
+        .section{padding:20px 25px;border-bottom:1px solid #eee}
+        .section:last-of-type{border-bottom:none}
+        .section-title{font-size:17px;font-weight:600;color:#1a1a2e;margin-bottom:15px;display:flex;align-items:center;gap:8px}
+        .section-title::before{content:'';width:4px;height:18px;background:#0066cc;border-radius:2px}
+        .list{list-style:none;padding-left:0}
+        .list li{padding:8px 0;padding-left:20px;position:relative;color:#555;font-size:14px}
+        .list li::before{content:'•';position:absolute;left:0;color:#0066cc;font-weight:bold}
+        .json-section{padding:25px;background:#fafbfc}
+        .json-title{font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #0066cc;display:inline-block}
+        .param-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+        .param-table th{background:#f8f9fa;padding:12px 15px;text-align:left;font-weight:600;color:#1a1a2e;border:1px solid #e0e0e0;white-space:nowrap}
+        .param-table td{padding:12px 15px;border:1px solid #e0e0e0;vertical-align:top}
+        .param-table tr:hover td{background:#f8f9fa}
+        .field-name-cell{padding-left:15px !important}
+        .field-name-cell.field-indent-1{padding-left:35px !important}
+        .field-name-cell.field-indent-2{padding-left:55px !important}
+        .field-name-cell.field-indent-3{padding-left:75px !important}
+        .field-name-cell.field-indent-4{padding-left:95px !important}
+        .field-name{font-family:'Monaco','Menlo',monospace;font-weight:600;color:#1565c0;background:#e8f4fd;padding:2px 8px;border-radius:3px;font-size:12px}
+        .field-type{color:#e65100;font-size:12px}
+        .field-required{color:#27ae60;font-size:12px;font-weight:600;background:#e8f5e9;padding:2px 6px;border-radius:3px}
+        .field-optional{color:#95a5a6;font-size:12px;background:#f5f5f5;padding:2px 6px;border-radius:3px}
+        .json-block{background:#282c34;border-radius:6px;overflow:hidden}
+        .json-block pre{padding:15px;margin:0;overflow-x:auto;color:#abb2bf}
+        .json-block code{font-family:'Monaco','Menlo',monospace;font-size:13px;line-height:1.5;color:#abb2bf}
+        .doc-footer{padding:20px;text-align:center;color:#888;font-size:12px;border-top:1px solid #eee;margin-top:20px}
+        @media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:20px}}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script>
+        function toggleSidebar(){
+            const sidebar=document.querySelector('.sidebar');
+            const main=document.querySelector('.main');
+            const floatingBtn=document.querySelector('.sidebar-toggle-floating');
+            const inlineBtn=document.querySelector('.sidebar-toggle-inline');
+            sidebar.classList.toggle('collapsed');
+            main.classList.toggle('expanded');
+            const isCollapsed=sidebar.classList.contains('collapsed');
+            floatingBtn.textContent=isCollapsed?'→':'←';
+            inlineBtn.textContent=isCollapsed?'→':'←';
+            if(isCollapsed){
+                floatingBtn.classList.add('visible');
+                inlineBtn.style.display='none'
+            }else{
+                floatingBtn.classList.remove('visible');
+                inlineBtn.style.display='block'
+            }
+            localStorage.setItem('sidebarCollapsed',isCollapsed)
+        }
+        function highlightToc(e){
+            document.querySelectorAll('.toc-link').forEach(l=>l.classList.remove('active'));
+            e.classList.add('active')
+        }
+        document.querySelectorAll('.toc-link').forEach(l=>{
+            l.addEventListener('click',function(){
+                highlightToc(this)
+            })
+        });
+        const observer=new IntersectionObserver((entries)=>{
+            entries.forEach(entry=>{
+                if(entry.isIntersecting){
+                    const id=entry.target.id;
+                    document.querySelectorAll('.toc-link').forEach(l=>l.classList.remove('active'));
+                    const activeLink=document.querySelector('.toc-link[href="#'+id+'"]');
+                    if(activeLink)activeLink.classList.add('active')
+                }
+            })
+        });
+        document.querySelectorAll('.api-section').forEach(s=>observer.observe(s));
+        document.addEventListener('DOMContentLoaded',function(){
+            document.querySelectorAll('pre code').forEach(function(block){hljs.highlightElement(block)});
+            const collapsed=localStorage.getItem('sidebarCollapsed')==='true';
+            const sidebar=document.querySelector('.sidebar');
+            const main=document.querySelector('.main');
+            const floatingBtn=document.querySelector('.sidebar-toggle-floating');
+            const inlineBtn=document.querySelector('.sidebar-toggle-inline');
+            floatingBtn.textContent=collapsed?'→':'←';
+            inlineBtn.textContent=collapsed?'→':'←';
+            if(collapsed){
+                sidebar.classList.add('collapsed');
+                main.classList.add('expanded');
+                floatingBtn.classList.add('visible');
+                inlineBtn.style.display='none'
+            }else{
+                floatingBtn.classList.remove('visible');
+                inlineBtn.style.display='block'
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="layout">
+        <button class="sidebar-toggle-floating" onclick="toggleSidebar()" title="收起/展开菜单">←</button>
+        <nav class="sidebar">
+            <div class="sidebar-title">
+                <span>test-sample</span>
+                <button class="sidebar-toggle-inline" onclick="toggleSidebar()" title="收起">←</button>
+            </div>
+            <ul class="toc"><li class="toc-item"><a href="#overall-description" class="toc-link">整体说明</a></li>
+<li class="toc-group"><div class="toc-group-title">order</div></li>
+<li class="toc-item"><a href="#api-订单查询接口" class="toc-link">订单查询接口</a></li>
+<li class="toc-group"><div class="toc-group-title">user</div></li>
+<li class="toc-item"><a href="#api-创建用户接口" class="toc-link">创建用户接口</a></li>
+<li class="toc-item"><a href="#api-用户查询接口" class="toc-link">用户查询接口</a></li>
+</ul>
+        </nav>
+        <main class="main"><section class="api-section" id="overall-description">
+<div class="api-title">整体说明</div>
+</section>
+<section class="api-section" id="api-订单查询接口">
+<div class="api-title">订单查询接口</div>
+<div class="meta-section">
+<div class="meta-block"><span class="meta-label">提供方</span><span class="meta-value">WMS系统</span></div><div class="meta-block"><span class="meta-label">接口协议</span><span class="meta-value"><span class="badge" style="background-color:#667eea;color:#ffffff">HTTP</span></span></div><div class="meta-block"><span class="meta-label">请求路径</span><span class="meta-value"><code class="inline-code">/api</code></span></div><div class="meta-block"><span class="meta-label">请求方法</span><span class="meta-value"><span class="tag" style="background-color:#4CAF50;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">GET</span></span></div></div><div class="section"><div class="section-title">请求参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">page</code></td><td><span class="field-type">integer</span></td><td>页码</td><td><span class="field-optional">选填</span></td><td>1</td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">pageSize</code></td><td><span class="field-type">integer</span></td><td>每页条数</td><td><span class="field-optional">选填</span></td><td>20</td><td>最大值: 100</td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">orderNo</code></td><td><span class="field-type">string</span></td><td>订单号</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">status</code></td><td><span class="field-type">string</span></td><td>订单状态</td><td></td><td></td><td>枚举: pending, processing, completed, cancelled</td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">请求示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;page&quot;: 1,
+  &quot;pageSize&quot;: 20,
+  &quot;status&quot;: &quot;pending&quot;
+}</code></pre></div>
+</div><div class="section"><div class="section-title">响应参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">code</code></td><td><span class="field-type">integer</span></td><td>状态码</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">data</code></td><td><span class="field-type">object</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">type</code></td><td><span class="field-type">string</span></td><td>array</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">items</code></td><td><span class="field-type">string</span></td><td>状态</td><td></td><td></td><td></td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">响应示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;code&quot;: 200,
+  &quot;data&quot;: {
+    &quot;list&quot;: [
+      {
+        &quot;orderNo&quot;: &quot;ORD20250412001&quot;,
+        &quot;amount&quot;: 1000.00,
+        &quot;status&quot;: &quot;pending&quot;
+      }
+    ]
+  }
+}</code></pre></div>
+</div></section>
+<section class="api-section" id="api-创建用户接口">
+<div class="api-title">创建用户接口</div>
+<div class="meta-section">
+<div class="meta-block"><span class="meta-label">提供方</span><span class="meta-value">WMS系统</span></div><div class="meta-block"><span class="meta-label">接口协议</span><span class="meta-value"><span class="badge" style="background-color:#667eea;color:#ffffff">HTTP</span></span></div><div class="meta-block"><span class="meta-label">请求路径</span><span class="meta-value"><code class="inline-code">/api</code></span></div><div class="meta-block"><span class="meta-label">请求方法</span><span class="meta-value"><span class="tag" style="background-color:#4CAF50;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">GET</span></span></div></div><div class="section"><div class="section-title">应用场景</div><ul class="list">
+<li>新增系统用户</li>
+<li>批量导入用户</li>
+</ul></div><div class="section"><div class="section-title">请求前置条件</div><ul class="list">
+<li>当前用户有创建权限</li>
+</ul></div><div class="section"><div class="section-title">请求参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">name</code></td><td><span class="field-type">string</span></td><td>用户名称</td><td></td><td></td><td>最大长度: 50</td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">email</code></td><td><span class="field-type">string</span></td><td>邮箱地址</td><td></td><td></td><td>格式: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$</td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">phone</code></td><td><span class="field-type">string</span></td><td>手机号</td><td></td><td></td><td>格式: ^1[3-9]\\d{9}$</td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">role</code></td><td><span class="field-type">string</span></td><td>角色</td><td><span class="field-optional">选填</span></td><td>user</td><td>枚举: admin, user, guest</td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">status</code></td><td><span class="field-type">string</span></td><td>状态</td><td><span class="field-optional">选填</span></td><td>active</td><td>枚举: active, inactive</td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">请求示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;name&quot;: &quot;李四&quot;,
+  &quot;email&quot;: &quot;li@example.com&quot;,
+  &quot;phone&quot;: &quot;13800138000&quot;,
+  &quot;role&quot;: &quot;user&quot;,
+  &quot;status&quot;: &quot;active&quot;
+}</code></pre></div>
+</div><div class="section"><div class="section-title">响应参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">code</code></td><td><span class="field-type">integer</span></td><td>状态码</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">message</code></td><td><span class="field-type">string</span></td><td>消息</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">data</code></td><td><span class="field-type">object</span></td><td>创建的用户信息</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">type</code></td><td><span class="field-type">string</span></td><td>integer</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">description</code></td><td><span class="field-type">string</span></td><td>用户ID</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">name</code></td><td><span class="field-type">string</span></td><td>用户名</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">createdAt</code></td><td><span class="field-type">string</span></td><td>创建时间</td><td></td><td></td><td></td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">响应示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;code&quot;: 200,
+  &quot;message&quot;: &quot;创建成功&quot;,
+  &quot;data&quot;: {
+    &quot;id&quot;: 100,
+    &quot;name&quot;: &quot;李四&quot;,
+    &quot;createdAt&quot;: &quot;2025-04-12 18:00:00&quot;
+  }
+}</code></pre></div>
+</div></section>
+<section class="api-section" id="api-用户查询接口">
+<div class="api-title">用户查询接口</div>
+<div class="meta-section">
+<div class="meta-block"><span class="meta-label">提供方</span><span class="meta-value">WMS系统</span></div><div class="meta-block"><span class="meta-label">接口协议</span><span class="meta-value"><span class="badge" style="background-color:#667eea;color:#ffffff">HTTP</span></span></div><div class="meta-block"><span class="meta-label">请求路径</span><span class="meta-value"><code class="inline-code">/api</code></span></div><div class="meta-block"><span class="meta-label">请求方法</span><span class="meta-value"><span class="tag" style="background-color:#4CAF50;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">GET</span></span></div></div><div class="section"><div class="section-title">请求参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">page</code></td><td><span class="field-type">integer</span></td><td>页码</td><td><span class="field-optional">选填</span></td><td>1</td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">pageSize</code></td><td><span class="field-type">integer</span></td><td>每页条数</td><td><span class="field-optional">选填</span></td><td>20</td><td>最大值: 100</td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">请求示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;page&quot;: 1,
+  &quot;pageSize&quot;: 20
+}</code></pre></div>
+</div><div class="section"><div class="section-title">响应参数</div>
+<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">code</code></td><td><span class="field-type">integer</span></td><td>状态码</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">message</code></td><td><span class="field-type">string</span></td><td>消息</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-0"><code class="field-name">data</code></td><td><span class="field-type">object</span></td><td>数据</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">type</code></td><td><span class="field-type">string</span></td><td>integer</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">description</code></td><td><span class="field-type">string</span></td><td>总数</td><td></td><td></td><td></td></tr>
+<tr><td class="field-name-cell field-indent-1"><code class="field-name">list</code></td><td><span class="field-type">string</span></td><td>用户名称</td><td></td><td></td><td></td></tr>
+</tbody></table></div><div class="json-section">
+<div class="json-title">响应示例</div>
+<div class="json-block"><pre><code class="language-json">{
+  &quot;code&quot;: 200,
+  &quot;message&quot;: &quot;success&quot;,
+  &quot;data&quot;: {
+    &quot;total&quot;: 100,
+    &quot;list&quot;: [
+      { &quot;id&quot;: 1, &quot;name&quot;: &quot;张三&quot; }
+    ]
+  }
+}</code></pre></div>
+</div></section>
+<footer class="doc-footer">文档版本: v1.0.0-20260412-222814</footer>
+</main>
+    </div>
+</body>
+</html>
