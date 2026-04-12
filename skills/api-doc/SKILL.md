@@ -1,6 +1,16 @@
 ---
 name: api-doc
-description: Convert API documentation from Markdown to beautiful HTML. Supports multi-file input, global metadata inheritance, JSON Schema for parameter definitions, and version timestamps. Use when users want to generate API documentation from markdown files. Triggers: "生成API文档", "生成HTML", "markdown转html", "api doc", "接口文档".
+description: >
+  Convert API documentation from Markdown to beautiful HTML.
+  Supports multi-file input, global metadata inheritance, JSON Schema
+  for parameter definitions, and version timestamps. Use when users want
+  to generate API documentation from markdown files.
+triggers:
+  - "生成API文档"
+  - "生成HTML"
+  - "markdown转html"
+  - "api doc"
+  - "接口文档"
 ---
 
 # API Documentation Generator
@@ -160,60 +170,3 @@ metadata:
 ## Dependencies
 
 - Node.js built-in modules: `fs`, `path`
-
----
-
-## Pitfalls (implementation notes)
-
-These lessons were learned through debugging the converter's parsing logic.
-
-### JSON blocks vs YAML schema blocks
-
-**CRITICAL**: When parsing code blocks in markdown, JSON example blocks MUST be checked BEFORE YAML schema blocks.
-
-Reason: The previous-line check uses `includes('请求')` to determine schema type. Since "请求示例" contains "请求", a JSON example block immediately after "## 请求示例" would incorrectly match the schema detection condition.
-
-**Correct order in parser:**
-```typescript
-// 1. First: JSON blocks = examples
-if (trimmedLine.startsWith('```json')) { ... }
-
-// 2. Second: YAML blocks = schema
-else if (trimmedLine.startsWith('```yaml')) { ... }
-```
-
-### List item metadata parsing
-
-When parsing list items like `- 提供方: WMS系统`, do NOT use fixed substring indices like `substring(5)`.
-
-**Problem**: "提供方" = 3 chars, "接口协议" = 4 chars. Fixed indices will skip wrong characters.
-
-**Correct approach:**
-```typescript
-const content = trimmedLine.substring(2); // Remove "- "
-const colonIdx = content.indexOf(':');
-const key = content.substring(0, colonIdx).trim();
-const value = content.substring(colonIdx + 1).trim();
-```
-
-### YAML indentation handling
-
-When parsing YAML blocks, the first property line's indent equals the base indent for the `properties:` block. If you check `indent <= baseIndent` to exit the loop, you'll exit prematurely on the first property.
-
-**Solution**: Only break when `indent < baseIndent` (strictly less than), not `<=`.
-
-### Inline object parsing in YAML
-
-When parsing YAML like `method: { value: POST, render: tag }`, the parser checks if `objValue` is empty to determine if the next line contains an inline object. However, when the value itself IS the inline object (e.g., `method: { value: POST }` on one line), the code must detect that `objValue.startsWith('{')` and parse accordingly.
-
-```typescript
-// Case 1: Value on next line
-if (!objValue) {
-    if (lines[i]?.includes('{')) { /* parse inline object */ }
-}
-// Case 2: Value IS the inline object
-else if (objValue.startsWith('{') && objValue.endsWith('}')) {
-    const match = objValue.match(/^\{([^}]+)\}$/);
-    // parse inline object
-}
-```
