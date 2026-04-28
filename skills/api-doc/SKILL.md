@@ -1,172 +1,129 @@
 ---
 name: api-doc
 description: >
-  Convert API documentation from Markdown to beautiful HTML.
-  Supports multi-file input, global metadata inheritance, JSON Schema
-  for parameter definitions, and version timestamps. Use when users want
-  to generate API documentation from markdown files.
+  Generate single-file HTML API documentation from TypeSpec definitions.
+  Supports auto-generated curl examples from @example decorators,
+  parameter tables with constraints, and version tags. Use when users want
+  to generate API documentation from TypeSpec (.tsp) files.
 triggers:
   - "生成API文档"
   - "生成HTML"
-  - "markdown转html"
   - "api doc"
   - "接口文档"
+  - "typespec doc"
 ---
 
 # API Documentation Generator
 
+Generates single-file HTML API documentation from TypeSpec definitions.
+
 ## Quick Start
 
 ```bash
-bun run .opencode/skills/api-doc/scripts/converter.ts <input> <output-html>
+bun run skills/api-doc/scripts/converter.ts <input-dir> <output.html>
 ```
 
-Where `<input>` can be:
-- A **single markdown file**: `./docs/api.md`
-- A **directory** with multiple API files (recommended for large projects)
-
-## Directory Structure (Recommended)
+## Input: TypeSpec Directory
 
 ```
-docs/api/
-├── index.md              # Entry file (overall description + global metadata)
-├── user/                 # Auto-derived group name from directory
-│   ├── list.md          # User list API
-│   └── create.md        # Create user API
-└── order/
-    ├── list.md           # Order list API
-    └── detail.md         # Order detail API
+my-api/
+├── main.tsp         # Shared models, service definition, imports
+├── 用户管理.tsp      # 一个文件 = 一个分组（文件名即分组名）
+└── 订单管理.tsp
 ```
 
-**Key features:**
-- Group names are auto-derived from directory structure (like Vue file-based routing)
-- Global metadata is defined in `index.md`, individual APIs can override specific fields
-- No need to repeat common metadata (provider, protocol, path) in every API file
+`main.tsp` must import all group `.tsp` files explicitly:
 
-## index.md - Global Metadata Defaults
+```typespec
+import "@typespec/http";
+import "./用户管理.tsp";
+import "./订单管理.tsp";
 
-Define common metadata **with values** in `index.md`. These become defaults for all APIs:
+using TypeSpec.Http;
 
-```markdown
----
-metadata:
-  provider:  { value: WMS, render: text, title: 提供方 }
-  protocol:  { value: HTTP, render: badge, title: 接口协议 }
-  path:      { value: /api, render: code, title: 请求路径 }
-  method:    { value: GET, render: tag, title: 请求方法 }
----
+@doc("My API Service")
+@service(#{title: "My API"})
+@route("/api")
+namespace MyAPI;
 
-### 整体说明
-- 整体描述...
-```
+model ApiResponse<T> {
+  code: int32;
+  message: string;
+  data?: T;
+}
 
-## API File Format (Minimal)
-
-Most APIs only need `title` and `metadata: {}` (empty). They automatically inherit all values from `index.md`:
-
-```markdown
----
-title: 创建入库单
-metadata:
----
-
-## 应用场景
-- 业务系统需要对仓储进行入库时请求
-
-## 请求前置条件
-- 无
-
-## 请求后结果
-- 库存量增加
-
-## 请求参数
-```yaml
-type: object
-properties:
-  code:
-    type: string
-    description: 入库单编码
-required: [code]
-```
-
-## 请求示例
-```json
-{
-  "code": "IN202401010001"
+model Error {
+  code: int32;
+  message: string;
 }
 ```
 
-## 响应参数
-```yaml
-type: object
-properties:
-  code:
-    type: integer
-    description: 状态码
-  data:
-    type: object
-    description: 数据对象
-```
+## Group File Format
 
-## 响应示例
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {}
+Each group file defines models and operations within a sub-namespace. The namespace suffix becomes the group name in the sidebar:
+
+```typespec
+namespace MyAPI.用户管理;
+
+using TypeSpec.Http;
+
+model CreateUserRequest {
+  @doc("用户名")
+  name: string;
+
+  @doc("邮箱")
+  email: string;
 }
+
+model User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+@doc("创建用户")
+@route("/users")
+@post
+op createUser(
+  @header authorization: string,
+  @body body: CreateUserRequest
+): ApiResponse<User> | Error;
+
+@doc("查询用户列表")
+@route("/users")
+@get
+op listUsers(
+  @header authorization: string,
+  @query page?: int32,
+  @query pageSize?: int32
+): ApiResponse<User[]> | Error;
 ```
 
-## Override Global Defaults
+## Key Decorators
 
-If an API differs from global defaults, provide only the changed fields:
-
-```markdown
----
-title: 创建用户
-metadata:
-  method: POST    # Simple value → uses global render config
----
-```
-
-Or override render style too with full object:
-
-```markdown
----
-title: WebSocket接口
-metadata:
-  method: { value: WS, render: badge }  # Override value AND render
----
-```
-
-## Metadata Format
-
-Each metadata field supports `value`, `render`, and optional `title`:
-
-```yaml
-metadata:
-  fieldName: { value: xxx, render: text, title: 显示标题 }
-```
-
-| Render Type | Description |
-|-------------|-------------|
-| `text` | Plain text (default) |
-| `badge` | Colored badge |
-| `tag` | Colored tag (method colors: GET=green, POST=blue, PUT=orange, DELETE=red) |
-| `code` | Inline code style |
-| `link` | Clickable link |
-| `copy` | Copyable code block |
+| Decorator | Purpose |
+|-----------|---------|
+| `@doc("...")` | Description text |
+| `@service(#{title: "..."})` | Service name |
+| `@route("/...")` | API path (on namespace or operation) |
+| `@get/@post/@put/@delete/@patch` | HTTP method |
+| `@header/@query/@path/@body` | Parameter location |
+| `@minValue(n)/@maxValue(n)` | Numeric constraints |
+| `@minLength(n)/@maxLength(n)` | String length constraints |
+| `@pattern("...")` | Regex pattern constraint |
 
 ## Output Features
 
-- Sidebar grouped by API category (from directory structure)
-- Complete metadata display with custom titles
-- Parameter tables with type, required, description, constraints
-- JSON Schema constraints (enum, pattern, maximum, etc.)
-- Request/response examples with syntax highlighting
-- **Version timestamp** in footer: `v1.0.0-YYYYMMDD-HHMMSS`
+- Single self-contained HTML file
+- Dark sidebar with grouped navigation
+- Parameter tables with type, constraints, required status
+- Auto-generated curl examples for each operation
+- Syntax highlighting (highlight.js)
 - Responsive design with sidebar toggle
+- Version timestamp in footer
+- Plugin-based render system (`scripts/renders/`)
 
 ## Dependencies
 
-- Node.js built-in modules: `fs`, `path`
+- `@typespec/compiler` (TypeScript TypeSpec compiler)
+- `@typespec/http` (HTTP decorators library)
