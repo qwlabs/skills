@@ -1,17 +1,25 @@
-import type { ApiOperation, ApiType } from "./types.js";
+// pipelines/curl-pipeline.ts
+import type { ParsedApiDoc, ApiOperation, ApiType } from "../adapters/types";
+import type { Pipeline, PipelineContext } from "./types";
 
-export function generateCurl(
-  operation: ApiOperation,
-  baseUrl?: string
-): string {
+export const curlPipeline: Pipeline = {
+  name: "curl",
+  process(doc: ParsedApiDoc, _ctx: PipelineContext): ParsedApiDoc {
+    for (const group of doc.groups) {
+      for (const op of group.operations) {
+        op.curlCommand = generateCurl(op, doc.baseUrl);
+      }
+    }
+    return doc;
+  },
+};
+
+function generateCurl(operation: ApiOperation, baseUrl?: string): string {
   const url = buildUrl(operation, baseUrl);
   const method = operation.verb.toUpperCase();
-
   const headers = buildHeaders(operation.parameters);
   headers.push("Content-Type: application/json");
-
   const bodyArg = buildBodyArg(operation.body);
-
   const parts = [`curl -X ${method} '${url}'`];
   for (const h of headers) {
     parts.push(`  -H '${h}'`);
@@ -19,24 +27,19 @@ export function generateCurl(
   if (bodyArg) {
     parts.push(`  -d '${bodyArg}'`);
   }
-
   return parts.join(" \\\n");
 }
 
 function buildUrl(operation: ApiOperation, baseUrl?: string): string {
   const base = baseUrl || "{baseUrl}";
   let path = operation.path;
-
   for (const param of operation.parameters) {
     if (param.location === "path") {
       const value = param.example ?? `{${param.name}}`;
       path = path.replace(`{${param.name}}`, String(value));
     }
   }
-
-  const queryParams = operation.parameters.filter(
-    (p) => p.location === "query"
-  );
+  const queryParams = operation.parameters.filter((p) => p.location === "query");
   if (queryParams.length > 0) {
     const qs = queryParams
       .map((p) => {
@@ -46,13 +49,10 @@ function buildUrl(operation: ApiOperation, baseUrl?: string): string {
       .join("&");
     path += `?${qs}`;
   }
-
   return `${base}${path}`;
 }
 
-function buildHeaders(
-  parameters: ApiOperation["parameters"]
-): string[] {
+function buildHeaders(parameters: ApiOperation["parameters"]): string[] {
   return parameters
     .filter((p) => p.location === "header")
     .map((p) => {

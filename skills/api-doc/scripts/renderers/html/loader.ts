@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { RenderFn, RenderResult } from './base.js';
+import { RenderFn, RenderResult } from './base';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -28,32 +28,32 @@ async function loadBuiltin(name: string): Promise<RenderFn | null> {
     switch (name) {
         case 'text':
             return async () => {
-                const { text } = await import('./text.js');
+                const { text } = await import('./text');
                 return text;
             };
         case 'badge':
             return async () => {
-                const { badge } = await import('./badge.js');
+                const { badge } = await import('./badge');
                 return badge;
             };
         case 'tag':
             return async () => {
-                const { tag } = await import('./tag.js');
+                const { tag } = await import('./tag');
                 return tag;
             };
         case 'code':
             return async () => {
-                const { code } = await import('./code.js');
+                const { code } = await import('./code');
                 return code;
             };
         case 'link':
             return async () => {
-                const { link } = await import('./link.js');
+                const { link } = await import('./link');
                 return link;
             };
         case 'copy':
             return async () => {
-                const { copy } = await import('./copy.js');
+                const { copy } = await import('./copy');
                 return copy;
             };
         default:

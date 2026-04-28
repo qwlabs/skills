@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>{{styles}}</style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script>{{scripts}}</script>
+</head>
+<body>
+    <div class="layout">
+        <button class="sidebar-toggle-floating" onclick="toggleSidebar()" title="收起/展开菜单">←</button>
+        <nav class="sidebar">
+            <div class="sidebar-title">
+                <span>{{title}}</span>
+                <button class="sidebar-toggle-inline" onclick="toggleSidebar()" title="收起">←</button>
+            </div>
+            <ul class="toc">{{sidebar_content}}</ul>
+        </nav>
+        <main class="main">{{api_content}}</main>
+    </div>
+</body>
+</html>

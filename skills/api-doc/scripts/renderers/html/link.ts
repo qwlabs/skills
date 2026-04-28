@@ -1,4 +1,4 @@
-import { RenderResult, RenderOptions } from './base.js';
+import { RenderResult, RenderOptions } from './base';
 
 export function link(value: any, options?: RenderOptions & { href?: string; target?: string }): RenderResult {
   const text = String(value)

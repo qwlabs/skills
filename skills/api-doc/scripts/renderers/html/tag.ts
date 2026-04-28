@@ -1,4 +1,4 @@
-import { RenderResult, RenderOptions } from './base.js';
+import { RenderResult, RenderOptions } from './base';
 
 const DEFAULT_COLORS: Record<string, string> = {
   GET: '#4CAF50',

@@ -1,4 +1,4 @@
-import { RenderResult, RenderOptions } from './base.js';
+import { RenderResult, RenderOptions } from './base';
 
 export function text(value: any, options?: RenderOptions): RenderResult {
   const escaped = options?.escape !== false 

@@ -1,3 +1,6 @@
+// adapters/typespec-adapter.ts
+// Wraps the TypeSpec parser logic as an Adapter implementation.
+
 import { join } from "path";
 import {
   compile,
@@ -25,6 +28,7 @@ import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
 import { existsSync, readdirSync } from "fs";
 import type {
+  Adapter,
   ParsedApiDoc,
   ApiGroup,
   ApiOperation as ApiOperationType,
@@ -35,9 +39,22 @@ import type {
   ApiProperty,
   ApiConstraints,
   VersionTag,
-} from "./types.js";
+} from "./types";
 
-export async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
+export const typespecAdapter: Adapter = {
+  name: "typespec",
+
+  detect(inputDir: string): boolean {
+    const entries = readdirSync(inputDir);
+    return entries.some((e: string) => e.endsWith(".tsp"));
+  },
+
+  async parse(inputDir: string): Promise<ParsedApiDoc> {
+    return parseTypeSpecDir(inputDir);
+  },
+};
+
+async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const mainFile = findMainFile(inputDir);
   const program = await compile(NodeHost, mainFile);
 
@@ -82,7 +99,7 @@ export async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> 
     groups.push({ name: groupName, operations: ops });
   }
 
-  return { title, version, groups };
+  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
 }
 
 function findMainFile(inputDir: string): string {

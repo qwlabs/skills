@@ -1,4 +1,11 @@
-// Types shared between parser, curl-generator, and html-generator
+// adapters/types.ts
+// Adapter interface + all shared types
+
+export interface Adapter {
+  readonly name: string;
+  detect(inputDir: string): boolean;
+  parse(inputDir: string): Promise<ParsedApiDoc>;
+}
 
 export interface ParsedApiDoc {
   title: string;
@@ -30,6 +37,7 @@ export interface ApiOperation {
   body?: ApiBody;
   responses: ApiResponse[];
   versionTags: VersionTag[];
+  curlCommand?: string;
 }
 
 export interface ApiParameter {

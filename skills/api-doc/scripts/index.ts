@@ -1,0 +1,104 @@
+// index.ts — CLI entry point: Adapter → Pipeline → Renderer
+import { existsSync, writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { typespecAdapter } from "./adapters/typespec-adapter";
+import { snippetPipeline } from "./pipelines/snippet-pipeline";
+import { curlPipeline } from "./pipelines/curl-pipeline";
+import { htmlRenderer } from "./renderers/html/index";
+import type { Adapter } from "./adapters/types";
+import type { Pipeline } from "./pipelines/types";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const adapters: Adapter[] = [typespecAdapter];
+const pipelines: Pipeline[] = [snippetPipeline, curlPipeline];
+
+function getVersion(): string {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `v1.0.0-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function detectAdapter(inputDir: string, adapterName?: string): Adapter {
+  if (adapterName) {
+    const adapter = adapters.find((a) => a.name === adapterName);
+    if (!adapter) {
+      console.error(`Adapter "${adapterName}" not found. Available: ${adapters.map((a) => a.name).join(", ")}`);
+      process.exit(1);
+    }
+    return adapter;
+  }
+  for (const adapter of adapters) {
+    if (adapter.detect(inputDir)) {
+      return adapter;
+    }
+  }
+  console.error("No suitable adapter found for input: " + inputDir);
+  process.exit(1);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  let adapterName: string | undefined;
+  const positional: string[] = [];
+  for (const arg of args) {
+    if (arg === "--adapter" || arg === "-a") {
+      adapterName = ""; // will be set by next arg
+    } else if (adapterName === "") {
+      adapterName = arg;
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  if (positional.length < 2) {
+    console.log("Usage: bun run index.ts <input-dir> <output.html> [--adapter <name>]");
+    console.log("");
+    console.log("Adapters: " + adapters.map((a) => a.name).join(", "));
+    process.exit(1);
+  }
+
+  const inputDir = positional[0];
+  const outputPath = positional[1];
+
+  if (!existsSync(inputDir)) {
+    console.error("Input directory not found: " + inputDir);
+    process.exit(1);
+  }
+
+  const adapter = detectAdapter(inputDir, adapterName);
+  console.log(`Using adapter: ${adapter.name}`);
+  console.log("Parsing: " + inputDir);
+
+  let doc = await adapter.parse(inputDir);
+
+  let totalOps = 0;
+  for (const group of doc.groups) {
+    totalOps += group.operations.length;
+    for (const op of group.operations) {
+      console.log(`  [${group.name}] ${op.verb.toUpperCase()} ${op.path} — ${op.name}`);
+    }
+  }
+  console.log(`Total: ${totalOps} operations in ${doc.groups.length} groups`);
+
+  for (const pipeline of pipelines) {
+    console.log(`Pipeline: ${pipeline.name}`);
+    doc = pipeline.process(doc, { inputDir, options: {} });
+  }
+
+  const version = getVersion();
+  const templateDir = join(__dirname, "templates");
+  console.log("Generating HTML...");
+  const output = await htmlRenderer.render(doc, { version, templateDir });
+
+  console.log("Writing: " + outputPath);
+  writeFileSync(outputPath, output, "utf-8");
+  console.log("Done! Version: " + version);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

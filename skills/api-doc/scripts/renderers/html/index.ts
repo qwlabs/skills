@@ -1,8 +1,7 @@
+// renderers/html-renderer.ts
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { render, preloadRenders } from "./renders/loader.js";
-import { generateCurl } from "./curl-generator.js";
+import { join } from "path";
+import { render, preloadRenders } from "./loader";
 import type {
   ParsedApiDoc,
   ApiOperation,
@@ -10,33 +9,46 @@ import type {
   ApiType,
   ApiProperty,
   ApiConstraints,
-  MarkdownSnippet,
-} from "./types.js";
+} from "../../adapters/types";
+import type { Renderer, RendererContext } from "../types";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+export const htmlRenderer: Renderer = {
+  name: "html",
+  async render(doc: ParsedApiDoc, ctx: RendererContext): Promise<string> {
+    await preloadRenders();
+    const template = loadTemplate(ctx.templateDir);
+    const styles = loadStyles(ctx.templateDir);
+    const scripts = loadScripts(ctx.templateDir);
+    const title = escapeHtml(doc.title);
+    const sidebarContent = generateSidebar(doc);
+    const apiContent = generateMainContent(doc, ctx.version);
 
-export async function generateHtml(
-  doc: ParsedApiDoc,
-  version: string
-): Promise<string> {
-  await preloadRenders();
+    return template
+      .replace("{{styles}}", styles)
+      .replace("{{scripts}}", scripts)
+      .replace(/\{\{title\}\}/g, title)
+      .replace(/\{\{sidebar_content\}\}/g, sidebarContent)
+      .replace(/\{\{api_content\}\}/g, apiContent)
+      .replace(/\{\{version\}\}/g, escapeHtml(ctx.version));
+  },
+};
 
-  const template = loadTemplate();
-  const title = escapeHtml(doc.title);
-  const sidebarContent = generateSidebar(doc);
-  const apiContent = generateMainContent(doc, version);
-
-  return template
-    .replace(/\{\{title\}\}/g, title)
-    .replace(/\{\{sidebar_content\}\}/g, sidebarContent)
-    .replace(/\{\{api_content\}\}/g, apiContent)
-    .replace(/\{\{version\}\}/g, escapeHtml(version));
+function loadTemplate(templateDir: string): string {
+  const p = join(templateDir, "template.html");
+  if (existsSync(p)) return readFileSync(p, "utf-8");
+  throw new Error("Template not found: " + p);
 }
 
-function loadTemplate(): string {
-  const templatePath = join(__dirname, "..", "templates", "template.html");
-  if (existsSync(templatePath)) return readFileSync(templatePath, "utf-8");
-  throw new Error("Template not found: " + templatePath);
+function loadStyles(templateDir: string): string {
+  const p = join(templateDir, "styles.css");
+  if (existsSync(p)) return readFileSync(p, "utf-8");
+  throw new Error("Styles not found: " + p);
+}
+
+function loadScripts(templateDir: string): string {
+  const p = join(templateDir, "scripts.js");
+  if (existsSync(p)) return readFileSync(p, "utf-8");
+  throw new Error("Scripts not found: " + p);
 }
 
 function escapeHtml(text: string): string {
@@ -154,11 +166,10 @@ function generateOperationSection(op: ApiOperation): string {
   }
 
   // curl example
-  const curl = generateCurl(op);
-  if (curl) {
+  if (op.curlCommand) {
     html += '<div class="json-section">\n';
     html += '<div class="json-title">请求示例 (curl)</div>\n';
-    html += `<div class="json-block curl-block"><pre><code class="language-bash">${escapeHtml(curl)}</code></pre>`;
+    html += `<div class="json-block curl-block"><pre><code class="language-bash">${escapeHtml(op.curlCommand)}</code></pre>`;
     html += `<button class="curl-copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent)">复制</button></div>\n`;
     html += "</div>";
   }
