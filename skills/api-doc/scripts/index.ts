@@ -1,5 +1,5 @@
 // index.ts — CLI entry point: Adapter → Pipeline → Renderer
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { typespecAdapter } from "./adapters/typespec-adapter";
@@ -18,6 +18,31 @@ function getVersion(): string {
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `v1.0.0-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function resolveTheme(themeName: string | undefined, themeFile: string | undefined, templateDir: string): string | undefined {
+  if (themeFile) {
+    if (!existsSync(themeFile)) {
+      console.error("Theme file not found: " + themeFile);
+      process.exit(1);
+    }
+    console.log("Using theme file: " + themeFile);
+    return readFileSync(themeFile, "utf-8");
+  }
+  if (themeName) {
+    const themesDir = join(dirname(templateDir), "themes");
+    const presetPath = join(themesDir, `${themeName}.css`);
+    if (!existsSync(presetPath)) {
+      const available = readdirSync(themesDir)
+        .filter((f: string) => f.endsWith(".css"))
+        .map((f: string) => f.replace(/\.css$/, ""));
+      console.error(`Theme "${themeName}" not found. Available: ${available.join(", ")}`);
+      process.exit(1);
+    }
+    console.log("Using theme: " + themeName);
+    return readFileSync(presetPath, "utf-8");
+  }
+  return undefined;
 }
 
 function detectAdapter(inputDir: string, adapterName?: string): Adapter {
@@ -42,21 +67,29 @@ async function main() {
   const args = process.argv.slice(2);
 
   let adapterName: string | undefined;
+  let themeName: string | undefined;
+  let themeFile: string | undefined;
   const positional: string[] = [];
+  let nextFlag: string | undefined;
+
   for (const arg of args) {
-    if (arg === "--adapter" || arg === "-a") {
-      adapterName = ""; // will be set by next arg
-    } else if (adapterName === "") {
-      adapterName = arg;
+    if (nextFlag) {
+      if (nextFlag === "--adapter") adapterName = arg;
+      else if (nextFlag === "--theme") themeName = arg;
+      else if (nextFlag === "--theme-file") themeFile = arg;
+      nextFlag = undefined;
+    } else if (arg === "--adapter" || arg === "--theme" || arg === "--theme-file") {
+      nextFlag = arg;
     } else {
       positional.push(arg);
     }
   }
 
   if (positional.length < 2) {
-    console.log("Usage: bun run index.ts <input-dir> <output.html> [--adapter <name>]");
+    console.log("Usage: bun run index.ts <input-dir> <output.html> [--adapter <name>] [--theme <name>] [--theme-file <path>]");
     console.log("");
     console.log("Adapters: " + adapters.map((a) => a.name).join(", "));
+    console.log("Themes: light (or list available with --theme-file)");
     process.exit(1);
   }
 
@@ -90,8 +123,9 @@ async function main() {
 
   const version = getVersion();
   const templateDir = join(__dirname, "templates");
+  const themeCSS = resolveTheme(themeName, themeFile, templateDir);
   console.log("Generating HTML...");
-  const output = await htmlRenderer.render(doc, { version, templateDir });
+  const output = await htmlRenderer.render(doc, { version, templateDir, themeCSS });
 
   console.log("Writing: " + outputPath);
   writeFileSync(outputPath, output, "utf-8");

@@ -1,0 +1,10 @@
+:root {
+  --doc-sidebar-bg: #0f172a;
+  --doc-sidebar-border: #1e293b;
+  --doc-sidebar-float-hover: #1e293b;
+  --doc-sidebar-hover-bg: rgba(255,255,255,0.05);
+  --doc-sidebar-active-bg: rgba(59,130,246,0.15);
+  --doc-table-hover-bg: #f1f5f9;
+  --doc-code-inline-bg: #f1f5f9;
+}
+.hljs { background: var(--doc-code-bg) !important; }

@@ -1,5 +1,3 @@
-namespace WMS.出库;
-
 using TypeSpec.Http;
 
 model OutboundItem {

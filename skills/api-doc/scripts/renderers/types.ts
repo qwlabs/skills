@@ -9,4 +9,5 @@ export interface Renderer {
 export interface RendererContext {
   version: string;
   templateDir: string;
+  themeCSS?: string;
 }

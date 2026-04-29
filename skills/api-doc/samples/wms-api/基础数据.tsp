@@ -1,5 +1,3 @@
-namespace WMS.基础数据;
-
 using TypeSpec.Http;
 
 model Warehouse {

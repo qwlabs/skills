@@ -5,10 +5,10 @@ export function badge(value: any, options?: RenderOptions): RenderResult {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  
-  const color = options?.backgroundColor ?? '#667eea';
-  const textColor = options?.textColor ?? '#ffffff';
-  
+
+  const color = options?.backgroundColor ?? 'var(--doc-badge-bg)';
+  const textColor = options?.textColor ?? 'var(--doc-badge-text)';
+
   return {
     html: `<span class="badge" style="background-color:${color};color:${textColor}">${escaped}</span>`
   };

@@ -17,7 +17,10 @@ export const htmlRenderer: Renderer = {
   async render(doc: ParsedApiDoc, ctx: RendererContext): Promise<string> {
     await preloadRenders();
     const template = loadTemplate(ctx.templateDir);
-    const styles = loadStyles(ctx.templateDir);
+    let styles = loadStyles(ctx.templateDir);
+    if (ctx.themeCSS) {
+      styles = styles + "\n" + ctx.themeCSS;
+    }
     const scripts = loadScripts(ctx.templateDir);
     const title = escapeHtml(doc.title);
     const sidebarContent = generateSidebar(doc);

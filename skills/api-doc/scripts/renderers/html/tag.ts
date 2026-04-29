@@ -1,11 +1,11 @@
 import { RenderResult, RenderOptions } from './base';
 
-const DEFAULT_COLORS: Record<string, string> = {
-  GET: '#4CAF50',
-  POST: '#2196F3',
-  PUT: '#FF9800',
-  DELETE: '#F44336',
-  PATCH: '#9C27B0'
+const TAG_VAR_MAP: Record<string, string> = {
+  GET: 'var(--doc-tag-get)',
+  POST: 'var(--doc-tag-post)',
+  PUT: 'var(--doc-tag-put)',
+  DELETE: 'var(--doc-tag-delete)',
+  PATCH: 'var(--doc-tag-patch)',
 };
 
 export function tag(value: any, options?: RenderOptions & { colors?: Record<string, string> }): RenderResult {
@@ -13,11 +13,11 @@ export function tag(value: any, options?: RenderOptions & { colors?: Record<stri
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  
-  const colorMap = { ...DEFAULT_COLORS, ...options?.colors };
-  const color = colorMap[value.toUpperCase()] ?? '#666666';
-  
+
+  const colorMap = { ...TAG_VAR_MAP, ...options?.colors };
+  const color = colorMap[value.toUpperCase()] ?? 'var(--doc-tag-default)';
+
   return {
-    html: `<span class="tag" style="background-color:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${escaped}</span>`
+    html: `<span class="tag" style="background-color:${color};color:var(--doc-tag-text);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${escaped}</span>`
   };
 }
