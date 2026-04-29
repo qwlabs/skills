@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { typespecAdapter } from "./adapters/typespec-adapter";
 import { snippetPipeline } from "./pipelines/snippet-pipeline";
 import { curlPipeline } from "./pipelines/curl-pipeline";
-import { htmlRenderer } from "./renderers/html/index";
+import { htmlRenderer } from "./renderers/html";
 import type { Adapter } from "./adapters/types";
 import type { Pipeline } from "./pipelines/types";
 
