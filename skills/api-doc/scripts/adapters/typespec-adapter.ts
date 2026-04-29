@@ -132,6 +132,19 @@ function buildOpSourceFile(
 
   for (const httpOp of httpOps) {
     const op = httpOp.operation;
+
+    // 优先使用 operation 所在 namespace 的最后一段作为分组名
+    const ns = getOperationNamespace(op);
+    if (ns) {
+      const nsName = ns.name || "";
+      const lastSegment = nsName.split(".").pop() || nsName;
+      if (lastSegment) {
+        map.set(op, lastSegment);
+        continue;
+      }
+    }
+
+    // 回退到文件名
     const node = op.node as any;
     const filePath: string | undefined = node?.parent?.file?.path;
     if (filePath) {
@@ -144,6 +157,12 @@ function buildOpSourceFile(
   }
 
   return map;
+}
+
+function getOperationNamespace(op: TspOperation): Namespace | undefined {
+  let current = (op as any).namespace;
+  if (current && current.kind === "Namespace") return current;
+  return undefined;
 }
 
 function groupOperationsByFile(

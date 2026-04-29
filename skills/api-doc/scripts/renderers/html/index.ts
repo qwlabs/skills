@@ -311,11 +311,36 @@ function simpleMarkdownToHtml(md: string): string {
 
   // Code blocks: ```lang\n...\n```
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, _lang, code) => {
-    return `<pre><code>${code.trim()}</code></pre>`;
+    return `\x00PRE\x00${code.trim()}\x00/PRE\x00`;
   });
 
   // Inline code: `...`
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // Tables: | header | ... | \n | --- | ... | \n | cell | ... |
+  html = html.replace(
+    /^(\|.+\|)\n(\|[\s:|-]+\|)\n((?:\|.+\|\n?)*)/gm,
+    (_match, headerRow, _sep, bodyBlock) => {
+      const headers = parseTableRow(headerRow);
+      const bodyRows = bodyBlock.trim().split("\n");
+      let table = '<table class="md-table"><thead><tr>';
+      for (const h of headers) {
+        table += `<th>${h.trim()}</th>`;
+      }
+      table += '</tr></thead><tbody>';
+      for (const row of bodyRows) {
+        if (!row.trim()) continue;
+        const cells = parseTableRow(row);
+        table += '<tr>';
+        for (const c of cells) {
+          table += `<td>${c.trim()}</td>`;
+        }
+        table += '</tr>';
+      }
+      table += '</tbody></table>';
+      return `\x00TABLE\x00${table}\x00/TABLE\x00`;
+    }
+  );
 
   // Headers
   html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
@@ -355,6 +380,12 @@ function simpleMarkdownToHtml(md: string): string {
   // Wrap in paragraph
   html = `<p>${html}</p>`;
 
+  // Restore preserved blocks (tables, pre)
+  html = html.replace(/\x00TABLE\x00/g, "");
+  html = html.replace(/\x00\/TABLE\x00/g, "");
+  html = html.replace(/\x00PRE\x00/g, "<pre><code>");
+  html = html.replace(/\x00\/PRE\x00/g, "</code></pre>");
+
   // Clean up empty paragraphs around block elements
   html = html.replace(/<p>\s*(<h[1-6]>)/g, "$1");
   html = html.replace(/(<\/h[1-6]>)\s*<\/p>/g, "$1");
@@ -362,7 +393,13 @@ function simpleMarkdownToHtml(md: string): string {
   html = html.replace(/(<\/pre>)\s*<\/p>/g, "$1");
   html = html.replace(/<p>\s*(<ul>)/g, "$1");
   html = html.replace(/(<\/ul>)\s*<\/p>/g, "$1");
+  html = html.replace(/<p>\s*(<table)/g, "$1");
+  html = html.replace(/(<\/table>)\s*<\/p>/g, "$1");
   html = html.replace(/<p>\s*<\/p>/g, "");
 
   return html;
+}
+
+function parseTableRow(row: string): string[] {
+  return row.split("|").slice(1, -1);
 }
