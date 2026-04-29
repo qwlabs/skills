@@ -6,11 +6,6 @@ import "./基础数据.tsp";
 
 using TypeSpec.Http;
 
-@doc("WMS 仓储管理系统")
-@service(#{title: "WMS API"})
-@route("/api")
-namespace WMS;
-
 model ApiResponse<T> {
   @doc("状态码")
   code: int32;
