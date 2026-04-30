@@ -56,3 +56,33 @@ document.addEventListener('DOMContentLoaded',function(){
         inlineBtn.style.display='block'
     }
 });
+function switchExampleTab(btn,paneId){
+    var section=btn.closest('.example-section');
+    section.querySelectorAll('.example-tab').forEach(function(t){t.classList.remove('active')});
+    btn.classList.add('active');
+    section.querySelectorAll('.example-pane').forEach(function(p){p.classList.remove('active')});
+    document.getElementById(paneId).classList.add('active');
+    var pane=document.getElementById(paneId);
+    pane.querySelectorAll('.example-card-tab').forEach(function(t){t.classList.remove('active')});
+    pane.querySelector('.tab-request').classList.add('active');
+    pane.querySelectorAll('.example-card-content').forEach(function(c){c.classList.remove('active')});
+    pane.querySelector('.example-card-content').classList.add('active')
+}
+function switchCardTab(btn,contentId){
+    var card=btn.closest('.example-card');
+    card.querySelectorAll('.example-card-tab').forEach(function(t){t.classList.remove('active')});
+    btn.classList.add('active');
+    card.querySelectorAll('.example-card-content').forEach(function(c){c.classList.remove('active')});
+    document.getElementById(contentId).classList.add('active');
+    var codeEl=document.getElementById(contentId).querySelector('code');
+    if(codeEl&&!codeEl.classList.contains('hljs')){hljs.highlightElement(codeEl)}
+}
+function copyCard(btn){
+    var body=btn.closest('.example-card-body');
+    var active=body.querySelector('.example-card-content.active');
+    var code=active.querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(function(){
+        btn.textContent='已复制';
+        setTimeout(function(){btn.textContent='复制'},1500)
+    })
+}

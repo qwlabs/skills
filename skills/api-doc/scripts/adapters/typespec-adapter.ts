@@ -240,6 +240,7 @@ function extractOperation(
   }
 
   const versionTags = extractVersionTags(op);
+  const examples = extractDocExamples(op);
 
   return {
     id,
@@ -251,6 +252,7 @@ function extractOperation(
     body,
     responses,
     versionTags,
+    examples,
   };
 }
 
@@ -280,14 +282,27 @@ function resolveType(program: Program, type: Type): ApiType {
         };
       }
       const properties: ApiProperty[] = [];
-      for (const [propName, prop] of type.properties) {
+      // Collect properties from base models first, then own properties
+      const allProps = collectInheritedProperties(type);
+      for (const [propName, prop] of allProps) {
+        // String literal type = fixed value (e.g. outType: "json")
+        let fixedValue: unknown;
+        let resolvedType: ApiType;
+        if (prop.type.kind === "String") {
+          fixedValue = prop.type.value;
+          resolvedType = { kind: "string" };
+        } else {
+          fixedValue = undefined;
+          resolvedType = resolveType(program, prop.type);
+        }
         properties.push({
           name: propName,
-          type: resolveType(program, prop.type),
+          type: resolvedType,
           doc: getDoc(program, prop) || undefined,
           example: getExampleValue(prop),
           required: !prop.optional,
-          defaultValue: prop.defaultValue !== undefined ? getDefaultValue(prop.defaultValue) : undefined,
+          defaultValue: fixedValue !== undefined ? undefined : (prop.defaultValue !== undefined ? getDefaultValue(prop.defaultValue) : undefined),
+          fixedValue,
           constraints: extractConstraints(program, prop),
           versionTags: extractVersionTags(prop),
         });
@@ -326,6 +341,20 @@ function resolveType(program: Program, type: Type): ApiType {
     default:
       return { kind: "any" };
   }
+}
+
+function collectInheritedProperties(model: Model): Map<string, ModelProperty> {
+  const props = new Map<string, ModelProperty>();
+  // Walk base chain first so own properties override
+  if (model.baseModel) {
+    for (const [name, prop] of collectInheritedProperties(model.baseModel)) {
+      props.set(name, prop);
+    }
+  }
+  for (const [name, prop] of model.properties) {
+    props.set(name, prop);
+  }
+  return props;
 }
 
 function resolveScalarBase(scalarName: string): ApiType {
@@ -386,4 +415,46 @@ function extractVersionTags(target: Type): VersionTag[] {
 function isErrorResponse(statusCode: string): boolean {
   const code = parseInt(statusCode, 10);
   return !isNaN(code) && code >= 400;
+}
+
+function extractDocExamples(target: Type): import("./types").ApiExample[] {
+  const examples: import("./types").ApiExample[] = [];
+  for (const dec of (target as any).decorators || []) {
+    const decName = dec.definition?.name;
+    if (decName === "@opExample" && dec.args.length >= 1) {
+      const example = dec.args[0].jsValue as Record<string, unknown>;
+      const options = dec.args[1]?.jsValue as Record<string, unknown> | undefined;
+      const name = String(options?.title || "示例");
+      const params = example.parameters as Record<string, unknown> | undefined;
+      const reqData = params?.body || params;
+      const request = reqData ? JSON.stringify(deepCloneValue(reqData), null, 2) : undefined;
+      const resRaw = example.returnType;
+      const response = resRaw ? JSON.stringify(deepCloneValue(resRaw), null, 2) : "{}";
+      examples.push({ name, request, response });
+    }
+  }
+  return examples;
+}
+
+function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
+  if (val === null || val === undefined) return val;
+  if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return val;
+  if (typeof val !== "object") return String(val);
+  if (seen.has(val)) return undefined;
+  seen.add(val);
+  const obj = val as Record<string, unknown>;
+  // TypeSpec EnumMember → use its name
+  if (obj.kind === "EnumMember" && typeof obj.name === "string") return obj.name;
+  // TypeSpec EnumValue wrapper { value: EnumMember } → unwrap to member name
+  if (obj.valueKind === "EnumValue" && obj.value && typeof (obj.value as any).name === "string") {
+    return (obj.value as any).name;
+  }
+  if (Array.isArray(val)) {
+    return val.map((item) => deepCloneValue(item, seen));
+  }
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    result[k] = deepCloneValue(v, seen);
+  }
+  return result;
 }

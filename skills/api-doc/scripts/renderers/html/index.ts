@@ -9,6 +9,7 @@ import type {
   ApiType,
   ApiProperty,
   ApiConstraints,
+  ApiExample,
 } from "../../adapters/types";
 import type { Renderer, RendererContext } from "../types";
 
@@ -161,33 +162,29 @@ function generateOperationSection(op: ApiOperation): string {
 
   // Request body
   if (op.body && op.body.type.kind === "object") {
-    html += '<div class="section"><div class="section-title">请求体</div>\n';
+    html += '<div class="section"><div class="section-title">请求参数</div>\n';
     html +=
-      '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>\n';
+      '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>约束</th><th>说明</th></tr></thead><tbody>\n';
     html += generatePropertyRows(op.body.type.properties, 0);
     html += "</tbody></table></div>";
-  }
-
-  // curl example
-  if (op.curlCommand) {
-    html += '<div class="json-section">\n';
-    html += '<div class="json-title">请求示例 (curl)</div>\n';
-    html += `<div class="json-block curl-block"><pre><code class="language-bash">${escapeHtml(op.curlCommand)}</code></pre>`;
-    html += `<button class="curl-copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent)">复制</button></div>\n`;
-    html += "</div>";
   }
 
   // Response parameters
   for (const resp of op.responses) {
     if (!resp.isError && resp.type && resp.type.kind === "object") {
       html +=
-        '<div class="section"><div class="section-title">响应参数</div>\n';
+        '<div class="section"><div class="section-title">返回参数</div>\n';
       html +=
-        '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>说明</th><th>必填</th><th>默认值</th><th>约束</th></tr></thead><tbody>\n';
+        '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>约束</th><th>说明</th></tr></thead><tbody>\n';
       html += generatePropertyRows(resp.type.properties, 0);
       html += "</tbody></table></div>";
       break;
     }
+  }
+
+  // Examples
+  if (op.examples.length > 0) {
+    html += generateExampleSection(op.id, op.examples);
   }
 
   // Error responses summary
@@ -231,12 +228,9 @@ function generatePropertyRows(properties: ApiProperty[], level: number): string 
   for (const prop of properties) {
     const indentClass = "field-indent-" + Math.min(level, 4);
     const typeDisplay = formatType(prop.type);
-    const requiredBadge = prop.required
-      ? '<span class="field-required">必填</span>'
-      : '<span class="field-optional">选填</span>';
-    const defaultDisplay =
-      prop.defaultValue !== undefined ? String(prop.defaultValue) : "";
-    const constraints = formatConstraints(prop.constraints);
+
+    // Build constraints: each category on its own line with distinct visual style
+    const constraintHtml = formatConstraintsHtml(prop.required, prop.constraints, prop.defaultValue, prop.fixedValue);
 
     let versionHtml = "";
     for (const vt of prop.versionTags) {
@@ -249,10 +243,8 @@ function generatePropertyRows(properties: ApiProperty[], level: number): string 
       `<tr>` +
       `<td class="field-name-cell ${indentClass}"><code class="field-name">${escapeHtml(prop.name)}</code>${versionHtml}</td>` +
       `<td><span class="field-type">${escapeHtml(typeDisplay)}</span></td>` +
+      `<td class="constraint-cell">${constraintHtml}</td>` +
       `<td>${escapeHtml(prop.doc || "")}</td>` +
-      `<td>${requiredBadge}</td>` +
-      `<td>${escapeHtml(defaultDisplay)}</td>` +
-      `<td>${escapeHtml(constraints)}</td>` +
       `</tr>\n`;
 
     if (prop.type.kind === "object") {
@@ -297,6 +289,49 @@ function formatType(type: ApiType): string {
     case "scalar":
       return type.name;
   }
+}
+
+function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValue?: unknown, fixedValue?: unknown): string {
+  const lines: string[] = [];
+
+  // Required tag
+  if (required) {
+    lines.push('<span class="constraint-tag constraint-required">必填</span>');
+  } else {
+    lines.push('<span class="constraint-tag constraint-optional">选填</span>');
+  }
+
+  // Range constraints: combine min/max into range expression
+  const cAny = c as Record<string, unknown>;
+  if (cAny.minimum !== undefined || cAny.maximum !== undefined) {
+    const min = cAny.minimum !== undefined ? String(cAny.minimum) : "";
+    const max = cAny.maximum !== undefined ? String(cAny.maximum) : "";
+    const expr = min && max ? `[${min}, ${max}]` : min ? `≥ ${min}` : `≤ ${max}`;
+    lines.push(`<span class="constraint-item">值域 ${expr}</span>`);
+  }
+  if (cAny.minLength !== undefined || cAny.maxLength !== undefined) {
+    const min = cAny.minLength !== undefined ? String(cAny.minLength) : "";
+    const max = cAny.maxLength !== undefined ? String(cAny.maxLength) : "";
+    const expr = min && max ? `[${min}, ${max}]` : min ? `≥ ${min}` : `≤ ${max}`;
+    lines.push(`<span class="constraint-item">长度 ${expr}</span>`);
+  }
+
+  // Pattern
+  if (cAny.pattern !== undefined) {
+    lines.push(`<span class="constraint-item">格式 /${cAny.pattern}/</span>`);
+  }
+
+  // Fixed value (from string literal type, e.g. outType: "json")
+  if (fixedValue !== undefined) {
+    lines.push(`<span class="constraint-tag constraint-fixed">固定值 <code>${escapeHtml(String(fixedValue))}</code></span>`);
+  }
+
+  // Default value (only shown if no fixed value)
+  if (fixedValue === undefined && defaultValue !== undefined) {
+    lines.push(`<span class="constraint-item">默认 <code>${escapeHtml(String(defaultValue))}</code></span>`);
+  }
+
+  return lines.join("<br>");
 }
 
 function formatConstraints(c: ApiConstraints): string {
@@ -405,4 +440,79 @@ function simpleMarkdownToHtml(md: string): string {
 
 function parseTableRow(row: string): string[] {
   return row.split("|").slice(1, -1);
+}
+
+function generateExampleSection(opId: string, examples: ApiExample[]): string {
+  let html = '<div class="example-section">\n';
+  html += '<div class="example-section-title">示例</div>\n';
+
+  // Example tabs
+  html += '<div class="example-tabs">\n';
+  for (let i = 0; i < examples.length; i++) {
+    const ex = examples[i];
+    const cls = i === 0 ? ' class="example-tab active"' : ' class="example-tab"';
+    html += `<button${cls} onclick="switchExampleTab(this, 'ex-${opId}-${i}')">${escapeHtml(ex.name)}</button>\n`;
+  }
+  html += '</div>\n';
+
+  // Example panes
+  for (let i = 0; i < examples.length; i++) {
+    const ex = examples[i];
+    const paneCls = i === 0 ? ' class="example-pane active"' : ' class="example-pane"';
+    html += `<div${paneCls} id="ex-${opId}-${i}">\n`;
+    html += '<div class="example-card">\n';
+    html += '<div class="example-card-header">\n';
+    const hasRequest = ex.request != null && ex.request !== undefined;
+    const hasCurl = !!ex.curlCommand;
+    if (hasRequest) {
+      const firstTabActive = ' class="example-card-tab tab-request active"';
+      const resCls = ' class="example-card-tab tab-response"';
+      const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
+      html += `<button${firstTabActive} onclick="switchCardTab(this, 'req-${opId}-${i}')">请求数据</button>\n`;
+      html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
+      if (hasCurl) {
+        html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
+      }
+    } else {
+      const resCls = ' class="example-card-tab tab-response active"';
+      const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
+      html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
+      if (hasCurl) {
+        html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
+      }
+    }
+    html += '</div>\n';
+
+    html += '<div class="example-card-body">\n';
+
+    // Request content
+    if (hasRequest) {
+      const reqContentCls = i === 0 ? ' class="example-card-content active"' : ' class="example-card-content"';
+      html += `<div${reqContentCls} id="req-${opId}-${i}">\n`;
+      html += `<pre><code class="language-json">${escapeHtml(ex.request!)}</code></pre>\n`;
+      html += '</div>\n';
+    }
+
+    // Response content
+    const resContentCls = hasRequest ? ' class="example-card-content"' : ' class="example-card-content active"';
+    html += `<div${resContentCls} id="res-${opId}-${i}">\n`;
+    html += `<pre><code class="language-json">${escapeHtml(ex.response)}</code></pre>\n`;
+    html += '</div>\n';
+
+    // cURL content
+    if (hasCurl) {
+      const curlContentCls = ' class="example-card-content"';
+      html += `<div${curlContentCls} id="curl-${opId}-${i}">\n`;
+      html += `<pre><code class="language-bash">${escapeHtml(ex.curlCommand!)}</code></pre>\n`;
+      html += '</div>\n';
+    }
+
+    html += '<button class="example-copy-btn" onclick="copyCard(this)">复制</button>\n';
+    html += '</div>\n'; // example-card-body
+    html += '</div>\n'; // example-card
+    html += '</div>\n'; // example-pane
+  }
+
+  html += '</div>\n'; // example-section
+  return html;
 }

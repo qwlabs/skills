@@ -1,5 +1,5 @@
 // pipelines/curl-pipeline.ts
-import type { ParsedApiDoc, ApiOperation, ApiType } from "../adapters/types";
+import type { ParsedApiDoc, ApiOperation, ApiType, ApiExample } from "../adapters/types";
 import type { Pipeline, PipelineContext } from "./types";
 
 export const curlPipeline: Pipeline = {
@@ -8,6 +8,9 @@ export const curlPipeline: Pipeline = {
     for (const group of doc.groups) {
       for (const op of group.operations) {
         op.curlCommand = generateCurl(op, doc.baseUrl);
+        for (const ex of op.examples) {
+          ex.curlCommand = generateExampleCurl(op, ex, doc.baseUrl);
+        }
       }
     }
     return doc;
@@ -151,4 +154,18 @@ function capitalizeHeader(name: string): string {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join("-");
+}
+
+function generateExampleCurl(operation: ApiOperation, example: ApiExample, baseUrl?: string): string | undefined {
+  if (!example.request) return undefined;
+  const url = buildUrl(operation, baseUrl);
+  const method = operation.verb.toUpperCase();
+  const headers = buildHeaders(operation.parameters);
+  headers.push("Content-Type: application/json");
+  const parts = [`curl -X ${method} '${url}'`];
+  for (const h of headers) {
+    parts.push(`  -H '${h}'`);
+  }
+  parts.push(`  -d '${example.request}'`);
+  return parts.join(" \\\n");
 }

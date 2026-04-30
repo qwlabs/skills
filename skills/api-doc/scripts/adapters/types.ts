@@ -38,6 +38,14 @@ export interface ApiOperation {
   responses: ApiResponse[];
   versionTags: VersionTag[];
   curlCommand?: string;
+  examples: ApiExample[];
+}
+
+export interface ApiExample {
+  name: string;
+  request?: string;
+  response: string;
+  curlCommand?: string;
 }
 
 export interface ApiParameter {
@@ -86,6 +94,7 @@ export interface ApiProperty {
   example?: unknown;
   required: boolean;
   defaultValue?: unknown;
+  fixedValue?: unknown;
   constraints: ApiConstraints;
   versionTags: VersionTag[];
 }
