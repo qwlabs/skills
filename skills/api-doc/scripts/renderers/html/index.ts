@@ -145,16 +145,13 @@ function generateOperationSection(op: ApiOperation): string {
   }
   html += "</div>\n";
 
-  // Request parameters (header, query, path, cookie — not body)
-  const nonBodyParams = op.parameters.filter(
-    (p) => p.location !== "body"
-  );
-  if (nonBodyParams.length > 0) {
+  // Request parameters (header, query, path, cookie)
+  if (op.parameters.length > 0) {
     html +=
       '<div class="section"><div class="section-title">请求参数</div>\n';
     html +=
       '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>位置</th><th>说明</th><th>必填</th><th>约束</th></tr></thead><tbody>\n';
-    for (const param of nonBodyParams) {
+    for (const param of op.parameters) {
       html += generateParameterRow(param);
     }
     html += "</tbody></table></div>";

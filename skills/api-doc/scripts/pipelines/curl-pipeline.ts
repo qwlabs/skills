@@ -69,11 +69,11 @@ function buildHeaders(parameters: ApiOperation["parameters"]): string[] {
 
 function buildBodyArg(body: ApiOperation["body"]): string | null {
   if (!body) return null;
-  const json = typeToJson(body.type);
+  const json = generatePlaceholder(body.type, true);
   return JSON.stringify(json, null, 2);
 }
 
-export function typeToJson(type: ApiType): unknown {
+export function generatePlaceholder(type: ApiType, useExample = false): unknown {
   switch (type.kind) {
     case "string":
       return "{string}";
@@ -91,7 +91,7 @@ export function typeToJson(type: ApiType): unknown {
     case "enum":
       return type.members[0]?.value ?? type.members[0]?.name ?? "{enum}";
     case "union":
-      if (type.variants.length > 0) return typeToJson(type.variants[0]);
+      if (type.variants.length > 0) return generatePlaceholder(type.variants[0], useExample);
       return null;
     case "array":
       return [];
@@ -99,54 +99,22 @@ export function typeToJson(type: ApiType): unknown {
       const obj: Record<string, unknown> = {};
       for (const prop of type.properties) {
         obj[prop.name] =
-          prop.example !== undefined
+          useExample && prop.example !== undefined
             ? prop.example
-            : generatePlaceholder(prop.type);
+            : generatePlaceholder(prop.type, useExample);
       }
       return obj;
     }
     case "scalar":
-      return generatePlaceholder(type.baseType);
-    case "any":
+      return generatePlaceholder(type.baseType, useExample);
     default:
       return null;
   }
 }
 
-export function generatePlaceholder(type: ApiType): unknown {
-  switch (type.kind) {
-    case "string":
-      return "{string}";
-    case "number":
-    case "float":
-      return 0;
-    case "integer":
-      return 0;
-    case "boolean":
-      return true;
-    case "datetime":
-      return "2024-01-01T00:00:00Z";
-    case "uuid":
-      return "00000000-0000-0000-0000-000000000000";
-    case "enum":
-      return type.members[0]?.value ?? type.members[0]?.name ?? "{enum}";
-    case "union":
-      if (type.variants.length > 0) return generatePlaceholder(type.variants[0]);
-      return null;
-    case "array":
-      return [];
-    case "object": {
-      const obj: Record<string, unknown> = {};
-      for (const prop of type.properties) {
-        obj[prop.name] = generatePlaceholder(prop.type);
-      }
-      return obj;
-    }
-    case "scalar":
-      return generatePlaceholder(type.baseType);
-    default:
-      return null;
-  }
+/** @deprecated Use generatePlaceholder(type, true) instead */
+export function typeToJson(type: ApiType): unknown {
+  return generatePlaceholder(type, true);
 }
 
 function capitalizeHeader(name: string): string {

@@ -65,20 +65,16 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     (d) => d.severity === "error" && d.code !== "invalid-ref"
   );
   if (errors.length > 0) {
-    const msgs = errors
-      .map((d) => {
-        const msg = typeof d.message === "string" ? d.message : d.message?.toString() || String(d.message);
-        return msg;
-      })
-      .join("\n");
+      const msgs = errors
+        .map((d) => String(d.message))
+        .join("\n");
     throw new Error(`TypeSpec compilation failed:\n${msgs}`);
   }
 
   const [services, diags] = getAllHttpServices(program);
   if (diags.length > 0) {
     for (const d of diags) {
-      const msg = typeof d.message === "string" ? d.message : d.message?.toString() || "";
-      console.warn(`Warning: ${msg}`);
+      console.warn(`Warning: ${String(d.message)}`);
     }
   }
 
@@ -285,7 +281,7 @@ function resolveType(program: Program, type: Type): ApiType {
   switch (type.kind) {
     case "String":
       return { kind: "string" };
-    case "Numeric":
+    case "Number":
       return { kind: "number" };
     case "Boolean":
       return { kind: "boolean" };
@@ -376,20 +372,17 @@ function collectInheritedProperties(model: Model): Map<string, ModelProperty> {
   return props;
 }
 
+const INTEGER_TYPES = new Set(["int32", "int64", "integer", "safeint", "int128", "uint8", "uint16", "uint32", "uint64"]);
+const FLOAT_TYPES = new Set(["float", "double", "decimal", "decimal128", "numeric"]);
+const DATETIME_TYPES = new Set(["utcdatetime", "offsetdatetime", "datetime"]);
+
 function resolveScalarBase(scalarName: string): ApiType {
   const name = scalarName.toLowerCase();
-  if (name === "int32" || name === "int64" || name === "integer" || name === "safeint" || name === "int128" || name === "uint8" || name === "uint16" || name === "uint32" || name === "uint64")
-    return { kind: "integer" };
-  if (name === "float" || name === "double" || name === "decimal" || name === "decimal128" || name === "numeric")
-    return { kind: "float" };
+  if (INTEGER_TYPES.has(name)) return { kind: "integer" };
+  if (FLOAT_TYPES.has(name)) return { kind: "float" };
   if (name === "boolean") return { kind: "boolean" };
   if (name === "string") return { kind: "string" };
-  if (
-    name === "utcdatetime" ||
-    name === "offsetdatetime" ||
-    name === "datetime"
-  )
-    return { kind: "datetime" };
+  if (DATETIME_TYPES.has(name)) return { kind: "datetime" };
   if (name === "uuid" || name === "guid") return { kind: "uuid" };
   return { kind: "any" };
 }
