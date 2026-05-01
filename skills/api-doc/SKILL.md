@@ -91,9 +91,12 @@ bun run scripts/index.ts ./samples/tms ./output.html --theme-file ./my-theme.css
 
 ```
 my-api/
-├── index.tsp         # 入口文件：import 其他 .tsp、定义 service 和公共 model
-├── 用户管理.tsp      # 每个文件 = 文档中的一个分组
-└── 订单管理.tsp
+├── index.tsp              # 入口文件：import 其他 .tsp、定义 service 和公共 model
+├── 用户管理.tsp            # 根目录文件：文件名 = 分组名
+├── 订单管理.tsp            # 根目录文件：文件名 = 分组名
+└── 物流/                   # 子目录：目录名 = 分组名
+    ├── 运单查询.tsp        # 文件名 = 接口名
+    └── 运单创建.tsp        # 文件名 = 接口名
 ```
 
 入口文件自动检测顺序：`index.tsp` → `main.tsp` → 第一个 `.tsp` 文件。
@@ -134,7 +137,15 @@ op createUser(
 ): ApiResponse<User> | Error;
 ```
 
-分组规则：优先使用 operation 所在 namespace 上的 `@doc` 作为分组名；无 `@doc` 时使用文件名（去掉 `.tsp` 后缀，`index`/`main` 归入"默认"）。
+分组规则（优先级从高到低）：
+1. operation 所在 namespace 上的 `@doc` 装饰器
+2. 根目录文件：使用文件名（去掉 `.tsp` 后缀，`index`/`main` 归入"默认"）
+3. 子目录文件：使用直接父目录名
+
+接口名规则（优先级从高到低）：
+1. operation 上的 `@doc` 装饰器
+2. 文件名（去掉 `.tsp` 后缀，`index`/`main` 回退到 operation 名）
+3. operation 名
 
 多文件合并分组：在多个 `.tsp` 文件的 namespace 上声明相同的 `@doc` 值，即可将它们归入同一分组：
 

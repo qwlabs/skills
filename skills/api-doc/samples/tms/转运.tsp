@@ -61,8 +61,7 @@ model StationLayContainerRequest extends HualeiRequest {
       data: #{
         code: "ST-003",
         locked: YesNo.YES,
-        hasContainer: YesNo.NO,
-        container: ""
+        hasContainer: YesNo.NO
       }
     }
   }

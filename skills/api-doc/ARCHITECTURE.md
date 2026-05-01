@@ -111,11 +111,12 @@ MarkdownSnippet // 片段：name, content
 1. `findMainFile()` — 按优先级查找入口文件
 2. `compile(NodeHost, mainFile)` — 调用 TypeSpec 编译器
 3. `getAllHttpServices()` — 提取 HTTP 服务
-4. 分组策略：取 operation 所在 namespace 最后一段；无 namespace 时用文件名
-5. `resolveType()` — 递归解析类型系统（支持 Model、Enum、Union、Array、Scalar、继承）
-6. `extractDocExamples()` — 从 `@opExample` decorator 提取示例数据
-7. `extractDocRequired()` — 从 `@docRequired` decorator 提取条件必填说明
-7. `collectInheritedProperties()` — 按 base chain 收集继承属性
+4. 分组策略：@doc(namespace) > 子目录用父目录名 / 根目录用文件名 > "默认"
+5. 接口名策略：@doc(operation) > 文件名（去 .tsp）> op.name
+6. `resolveType()` — 递归解析类型系统（支持 Model、Enum、Union、Array、Scalar、继承）
+7. `extractDocExamples()` — 从 `@opExample` decorator 提取示例数据
+8. `extractDocRequired()` — 从 `@docRequired` decorator 提取条件必填说明
+9. `collectInheritedProperties()` — 按 base chain 收集继承属性
 
 ### cURL 生成（curl-pipeline.ts）
 

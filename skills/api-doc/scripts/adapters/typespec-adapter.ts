@@ -1,7 +1,7 @@
 // adapters/typespec-adapter.ts
 // Wraps the TypeSpec parser logic as an Adapter implementation.
 
-import { join } from "path";
+import { join, resolve } from "path";
 import {
   compile,
   NodeHost,
@@ -50,7 +50,7 @@ export const typespecAdapter: Adapter = {
   },
 
   async parse(inputDir: string): Promise<ParsedApiDoc> {
-    return parseTypeSpecDir(inputDir);
+    return parseTypeSpecDir(resolve(inputDir));
   },
 };
 
@@ -88,7 +88,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
 
   // Build a map: operation → source file basename (without .tsp) for grouping
-  const opSourceFile = buildOpSourceFile(program, service.operations);
+  const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
 
   const operationMap = groupOperationsByFile(service.operations, opSourceFile);
 
@@ -96,7 +96,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   for (const [groupName, httpOps] of operationMap) {
     const ops: ApiOperationType[] = [];
     for (const httpOp of httpOps) {
-      ops.push(extractOperation(program, httpOp, groupName));
+      ops.push(extractOperation(program, httpOp, groupName, inputDir));
     }
     groups.push({ name: groupName, operations: ops });
   }
@@ -154,7 +154,8 @@ function readVersionFromConfig(inputDir: string): string | undefined {
 
 function buildOpSourceFile(
   program: Program,
-  httpOps: HttpOperation[]
+  httpOps: HttpOperation[],
+  inputDir: string
 ): Map<TspOperation, string> {
   const map = new Map<TspOperation, string>();
 
@@ -171,19 +172,44 @@ function buildOpSourceFile(
       }
     }
 
-    // 回退到文件名
+    // 回退到路径推导
     const node = op.node as any;
     const filePath: string | undefined = node?.parent?.file?.path;
     if (filePath) {
-      const basename = filePath.split("/").pop() || "";
-      const groupName = basename.replace(/\.tsp$/, "");
-      map.set(op, groupName === "index" || groupName === "main" ? "默认" : groupName);
+      map.set(op, deriveGroupNameFromPath(filePath, inputDir));
     } else {
       map.set(op, "默认");
     }
   }
 
   return map;
+}
+
+function deriveGroupNameFromPath(filePath: string, inputDir: string): string {
+  const normalizedInput = inputDir.replace(/\/+$/, "");
+  const normalizedFile = filePath.replace(/\/+$/, "");
+
+  // 计算相对路径
+  if (!normalizedFile.startsWith(normalizedInput + "/") && normalizedFile !== normalizedInput) {
+    // 文件不在 inputDir 下（理论上不该发生），用文件名兜底
+    const basename = normalizedFile.split("/").pop() || "";
+    const name = basename.replace(/\.tsp$/, "");
+    return name === "index" || name === "main" ? "默认" : name;
+  }
+
+  const relative = normalizedFile.slice(normalizedInput.length + 1);
+  const parts = relative.split("/");
+
+  // parts.length === 1 → 根目录文件，用文件名
+  // parts.length >= 2 → 子目录文件，用直接父目录名（倒数第二个部分）
+  if (parts.length === 1) {
+    const name = parts[0].replace(/\.tsp$/, "");
+    return name === "index" || name === "main" ? "默认" : name;
+  }
+
+  // 子目录文件：用直接父目录名
+  const parentDir = parts[parts.length - 2];
+  return parentDir;
 }
 
 function getOperationNamespace(op: TspOperation): Namespace | undefined {
@@ -213,10 +239,11 @@ function groupOperationsByFile(
 function extractOperation(
   program: Program,
   httpOp: HttpOperation,
-  group: string
+  group: string,
+  inputDir: string
 ): ApiOperationType {
   const op = httpOp.operation;
-  const name = getDoc(program, op) || op.name;
+  const name = getDoc(program, op) || deriveOpNameFromPath(op, inputDir) || op.name;
   const verb = httpOp.verb;
   const path = httpOp.path;
   const id = `${group}-${op.name}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
@@ -281,6 +308,17 @@ function extractOperation(
     versionTags,
     examples,
   };
+}
+
+function deriveOpNameFromPath(op: TspOperation, inputDir: string): string | undefined {
+  const node = op.node as any;
+  const filePath: string | undefined = node?.parent?.file?.path;
+  if (!filePath) return undefined;
+
+  const basename = filePath.split("/").pop() || "";
+  const name = basename.replace(/\.tsp$/, "");
+  if (name === "index" || name === "main") return undefined;
+  return name;
 }
 
 function getDefaultValue(val: any): unknown {

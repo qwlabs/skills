@@ -18,6 +18,8 @@ model HualeiRequest {
 }
 
 model HualeiResponse<T> {
+  @example(200)
+  @example(1001)
   @doc("状态")
   code: integer;
   @doc("错误信息")
@@ -53,7 +55,41 @@ enum YesNo {
   NO,
 }
 
+
+enum ExecutionStatus {
+    PENDING,
+    READY,
+    EXECUTING,
+    COMPLETED,
+    FAILED,
+    CANCELLED,
+    TIMEOUT,
+}
+
+model Payload {
+  @doc("包裹编码")
+  code: string;
+  @doc("包裹批次号")
+  lot?: string;
+  @doc("包裹分割号,建议格式示例: 2/3")
+  splitCode?: string;
+}
+
+model Task {
+  @doc("包裹编码")
+  id: string;
+  @doc("装载站点编码")
+  loadStationCode: string;
+  @doc("卸载站点编码")
+  unloadStationCode: string;
+  @doc("包裹")
+  payload: string;
+  @doc("任务执行状态")
+  executionStatus: ExecutionStatus;
+}
+
 model Station {
+  @example("[A-Z][1-9]_[0-9][0-9]__[0-9][0-9][0-9]")
   @doc("站点编码")
   code: string;
   @doc("是否锁定")
@@ -61,5 +97,6 @@ model Station {
   @doc("是否有容器")
   hasContainer: YesNo;
   @doc("容器")
-  container: string;
+  @requiredIf("hasContainer=YES")
+  container?: string;
 }
