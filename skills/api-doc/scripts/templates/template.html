@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>{{hljs_theme}}</style>
     <style>{{styles}}</style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script>{{hljs}}</script>
     <script>{{scripts}}</script>
 </head>
 <body>
     <div class="layout">
         <button class="sidebar-toggle-floating" onclick="toggleSidebar()" title="收起/展开菜单">←</button>
         <nav class="sidebar">
-            <div class="sidebar-title">
-                <span>{{title}}</span>
+            <div class="sidebar-header">
+                <div class="sidebar-title">{{title}}</div>
+                <div class="sidebar-badge-row">
+                    <span class="version-badge"><span class="version-badge-label"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 00.354 0l5.025-5.025a.25.25 0 000-.354l-6.25-6.25a.25.25 0 00-.177-.073H2.75a.25.25 0 00-.25.25zM6 5a1 1 0 11-2 0 1 1 0 012 0"/></svg></span><span class="version-badge-value">{{version}}</span></span>
+                </div>
                 <button class="sidebar-toggle-inline" onclick="toggleSidebar()" title="收起">←</button>
             </div>
             <ul class="toc">{{sidebar_content}}</ul>

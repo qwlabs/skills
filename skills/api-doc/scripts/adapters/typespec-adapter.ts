@@ -26,7 +26,7 @@ import type {
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import type {
   Adapter,
   ParsedApiDoc,
@@ -85,7 +85,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
 
   const serviceNs = service.namespace;
   const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
-  const version = getServiceVersion(serviceNs) || "1.0.0";
+  const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
 
   // Build a map: operation → source file basename (without .tsp) for grouping
   const opSourceFile = buildOpSourceFile(program, service.operations);
@@ -134,6 +134,19 @@ function getServiceVersion(ns: Namespace): string | undefined {
       if (args.length > 0 && args[0].jsValue && typeof args[0].jsValue === "object") {
         return (args[0].jsValue as Record<string, unknown>).version as string;
       }
+    }
+  }
+  return undefined;
+}
+
+function readVersionFromConfig(inputDir: string): string | undefined {
+  for (const name of ["api-doc.json", "apidoc.json"]) {
+    const p = join(inputDir, name);
+    if (existsSync(p)) {
+      try {
+        const config = JSON.parse(readFileSync(p, "utf-8"));
+        if (config.version && typeof config.version === "string") return config.version;
+      } catch { /* ignore */ }
     }
   }
   return undefined;

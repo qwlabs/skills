@@ -4,5 +4,5 @@ import "./转运.tsp";
 
 using TypeSpec.Http;
 
-@service(#{title: "TMS"})
+@service(#{title: "TMS API"})
 namespace TMS;

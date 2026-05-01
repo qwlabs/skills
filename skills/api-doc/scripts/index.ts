@@ -1,6 +1,6 @@
 // index.ts — CLI entry point: Adapter → Pipeline → Renderer
 import { existsSync, writeFileSync, readFileSync, readdirSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, resolve, basename } from "path";
 import { fileURLToPath } from "url";
 import { typespecAdapter } from "./adapters/typespec-adapter";
 import { snippetPipeline } from "./pipelines/snippet-pipeline";
@@ -14,10 +14,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const adapters: Adapter[] = [typespecAdapter];
 const pipelines: Pipeline[] = [snippetPipeline, curlPipeline];
 
-function getVersion(): string {
+function buildRevision(version: string): string {
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
-  return `v1.0.0-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}`;
+  return version ? `${version}-${ts}` : ts;
 }
 
 function resolveTheme(themeName: string | undefined, themeFile: string | undefined, templateDir: string): string | undefined {
@@ -85,16 +86,17 @@ async function main() {
     }
   }
 
-  if (positional.length < 2) {
-    console.log("Usage: bun run index.ts <input-dir> <output.html> [--adapter <name>] [--theme <name>] [--theme-file <path>]");
+  if (positional.length < 1) {
+    console.log("Usage: bun run index.ts <input-dir> [output] [--adapter <name>] [--theme <name>] [--theme-file <path>]");
     console.log("");
+    console.log("  output: 可选，默认输出至 <input-dir>/../<dirName>-<revision>.html");
     console.log("Adapters: " + adapters.map((a) => a.name).join(", "));
     console.log("Themes: light (or list available with --theme-file)");
     process.exit(1);
   }
 
   const inputDir = positional[0];
-  const outputPath = positional[1];
+  const inputDirName = inputDir.split("/").filter(Boolean).pop() || "output";
 
   if (!existsSync(inputDir)) {
     console.error("Input directory not found: " + inputDir);
@@ -106,6 +108,8 @@ async function main() {
   console.log("Parsing: " + inputDir);
 
   let doc = await adapter.parse(inputDir);
+
+  const revision = buildRevision(doc.version);
 
   let totalOps = 0;
   for (const group of doc.groups) {
@@ -121,15 +125,15 @@ async function main() {
     doc = pipeline.process(doc, { inputDir, options: {} });
   }
 
-  const version = getVersion();
   const templateDir = join(__dirname, "templates");
   const themeCSS = resolveTheme(themeName, themeFile, templateDir);
   console.log("Generating HTML...");
-  const output = await htmlRenderer.render(doc, { version, templateDir, themeCSS });
+  const output = await htmlRenderer.render(doc, { version: revision, templateDir, themeCSS });
 
+  const outputPath = positional[1] || join(dirname(resolve(inputDir)), `${inputDirName}-${revision}.html`);
   console.log("Writing: " + outputPath);
   writeFileSync(outputPath, output, "utf-8");
-  console.log("Done! Version: " + version);
+  console.log("Done! Revision: " + revision);
 }
 
 main().catch((err) => {

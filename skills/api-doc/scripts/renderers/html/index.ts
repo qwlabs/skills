@@ -26,8 +26,16 @@ export const htmlRenderer: Renderer = {
     const title = escapeHtml(doc.title);
     const sidebarContent = generateSidebar(doc);
     const apiContent = generateMainContent(doc, ctx.version);
+    const hljsCSS = inlineFile(ctx.templateDir, "vendor", "atom-one-dark.min.css");
+    const hljsBundle = [
+      inlineFile(ctx.templateDir, "vendor", "highlight.min.js"),
+      inlineFile(ctx.templateDir, "vendor", "json.min.js"),
+      inlineFile(ctx.templateDir, "vendor", "bash.min.js"),
+    ].join("\n");
 
     return template
+      .replace("{{hljs_theme}}", hljsCSS)
+      .replace("{{hljs}}", hljsBundle)
       .replace("{{styles}}", styles)
       .replace("{{scripts}}", scripts)
       .replace(/\{\{title\}\}/g, title)
@@ -53,6 +61,13 @@ function loadScripts(templateDir: string): string {
   const p = join(templateDir, "scripts.js");
   if (existsSync(p)) return readFileSync(p, "utf-8");
   throw new Error("Scripts not found: " + p);
+}
+
+function inlineFile(templateDir: string, ...segments: string[]): string {
+  const p = join(templateDir, ...segments);
+  if (existsSync(p)) return readFileSync(p, "utf-8");
+  console.warn("Warning: vendor file not found: " + p);
+  return "";
 }
 
 function escapeHtml(text: string): string {
@@ -120,7 +135,7 @@ function generateMainContent(doc: ParsedApiDoc, version: string): string {
     html += `<section class="api-section" id="${anchorId}"><div class="api-title">${escapeHtml(snippet.name)}</div><div class="markdown-section">${simpleMarkdownToHtml(snippet.content)}</div></section>\n`;
   }
 
-  html += `<footer class="doc-footer">文档版本: ${escapeHtml(version)}</footer>\n`;
+  html += buildFooterBadge(version);
   return html;
 }
 
@@ -511,4 +526,9 @@ function generateExampleSection(opId: string, examples: ApiExample[]): string {
 
   html += '</div>\n'; // example-section
   return html;
+}
+
+function buildFooterBadge(version: string): string {
+  const v = escapeHtml(version);
+  return `<footer class="doc-footer"><span class="footer-badge"><span class="footer-badge-label"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 00.354 0l5.025-5.025a.25.25 0 000-.354l-6.25-6.25a.25.25 0 00-.177-.073H2.75a.25.25 0 00-.25.25zM6 5a1 1 0 11-2 0 1 1 0 012 0"/></svg></span><span class="footer-badge-value">${v}</span></span></footer>\n`;
 }

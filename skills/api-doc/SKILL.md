@@ -32,11 +32,36 @@ bun run scripts/index.ts --help
 ### 基本命令
 
 ```bash
-bun run scripts/index.ts <input-dir> <output.html>
+bun run scripts/index.ts <input-dir> [output] [--adapter <name>] [--theme <name>] [--theme-file <path>]
 ```
 
-- `<input-dir>` — 包含 `.tsp` 文件的目录
-- `<output.html>` — 输出的 HTML 文件路径
+- `<input-dir>` — 包含 `.tsp` 文件的目录（必填）
+- `[output]` — 输出文件路径（可选）
+  - 未指定时自动输出至输入目录的父目录，文件名格式：`<目录名>-<revision>.html`
+  - 例如输入 `./tms`，输出 `./tms-1.0.0-2026050114.html`
+
+### Revision 格式
+
+Revision 由版本号 + 时间戳组成：
+
+```
+${version}-YYYYMMDDHH
+```
+
+例如：`1.0.0-2026050114`
+
+版本号来源（优先级从高到低）：
+1. 输入目录中的 `api-doc.json` 配置文件中的 `version` 字段
+2. TypeSpec `@service` 中的 `version` 字段（注意：TypeSpec 官方 `@service` 不支持 `version` 参数，请使用配置文件方式）
+
+配置文件方式（推荐）：
+
+```json
+// api-doc.json（放在输入目录中）
+{ "version": "1.0.0" }
+```
+
+未定义版本号时 revision 只包含时间戳：`2026050114`
 
 ### 选项
 
@@ -49,14 +74,17 @@ bun run scripts/index.ts <input-dir> <output.html>
 ### 示例
 
 ```bash
-# 基本用法
-bun run scripts/index.ts ./my-api ./output.html
+# 默认输出：输出至输入目录父目录，自动命名
+bun run scripts/index.ts ./samples/tms
+
+# 指定输出路径
+bun run scripts/index.ts ./samples/tms ./output.html
 
 # 使用 light 主题
-bun run scripts/index.ts ./my-api ./output.html --theme light
+bun run scripts/index.ts ./samples/tms --theme light
 
 # 使用自定义主题
-bun run scripts/index.ts ./my-api ./output.html --theme-file ./my-theme.css
+bun run scripts/index.ts ./samples/tms ./output.html --theme-file ./my-theme.css
 ```
 
 ## 输入目录结构
