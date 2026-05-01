@@ -19,7 +19,7 @@ model HualeiRequest {
 
 model HualeiResponse<T> {
   @doc("状态")
-  code: 200 | 1001;
+  code: integer;
   @doc("错误信息")
   message?: string;
   @doc("数据")

@@ -56,16 +56,22 @@ export const typespecAdapter: Adapter = {
 
 async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const mainFile = findMainFile(inputDir);
-  const program = await compile(NodeHost, mainFile);
+  const program = await compile(NodeHost, mainFile, {
+    noEmit: true,
+  });
 
-  if (program.hasError()) {
-    const errors = program.diagnostics
+  // Filter out unknown decorator errors (e.g. @docRequired) — only treat other errors as fatal
+  const errors = program.diagnostics.filter(
+    (d) => d.severity === "error" && d.code !== "invalid-ref"
+  );
+  if (errors.length > 0) {
+    const msgs = errors
       .map((d) => {
         const msg = typeof d.message === "string" ? d.message : d.message?.toString() || String(d.message);
         return msg;
       })
       .join("\n");
-    throw new Error(`TypeSpec compilation failed:\n${errors}`);
+    throw new Error(`TypeSpec compilation failed:\n${msgs}`);
   }
 
   const [services, diags] = getAllHttpServices(program);
@@ -82,11 +88,11 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   }
 
   const serviceNs = service.namespace;
-  const title = serviceNs.name || "API";
+  const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
   const version = getServiceVersion(serviceNs) || "1.0.0";
 
   // Build a map: operation → source file basename (without .tsp) for grouping
-  const opSourceFile = buildOpSourceFile(service.operations);
+  const opSourceFile = buildOpSourceFile(program, service.operations);
 
   const operationMap = groupOperationsByFile(service.operations, opSourceFile);
 
@@ -103,7 +109,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
 }
 
 function findMainFile(inputDir: string): string {
-  for (const name of ["main.tsp", "client.tsp", "index.tsp"]) {
+  for (const name of ["index.tsp", "main.tsp"]) {
     const p = join(inputDir, name);
     if (existsSync(p)) return p;
   }
@@ -111,6 +117,18 @@ function findMainFile(inputDir: string): string {
   const tsp = entries.find((e: string) => e.endsWith(".tsp"));
   if (tsp) return join(inputDir, tsp);
   throw new Error(`No .tsp files found in ${inputDir}`);
+}
+
+function getServiceTitle(ns: Namespace): string | undefined {
+  for (const dec of ns.decorators) {
+    if (dec.definition?.name === "@service") {
+      const args = dec.args;
+      if (args.length > 0 && args[0].jsValue && typeof args[0].jsValue === "object") {
+        return (args[0].jsValue as Record<string, unknown>).title as string;
+      }
+    }
+  }
+  return undefined;
 }
 
 function getServiceVersion(ns: Namespace): string | undefined {
@@ -126,6 +144,7 @@ function getServiceVersion(ns: Namespace): string | undefined {
 }
 
 function buildOpSourceFile(
+  program: Program,
   httpOps: HttpOperation[]
 ): Map<TspOperation, string> {
   const map = new Map<TspOperation, string>();
@@ -133,13 +152,12 @@ function buildOpSourceFile(
   for (const httpOp of httpOps) {
     const op = httpOp.operation;
 
-    // 优先使用 operation 所在 namespace 的最后一段作为分组名
+    // 优先使用 operation 所在 namespace 上 @doc("...") 作为分组名
     const ns = getOperationNamespace(op);
     if (ns) {
-      const nsName = ns.name || "";
-      const lastSegment = nsName.split(".").pop() || nsName;
-      if (lastSegment) {
-        map.set(op, lastSegment);
+      const doc = getDoc(program, ns);
+      if (doc) {
+        map.set(op, doc);
         continue;
       }
     }
@@ -303,6 +321,7 @@ function resolveType(program: Program, type: Type): ApiType {
           required: !prop.optional,
           defaultValue: fixedValue !== undefined ? undefined : (prop.defaultValue !== undefined ? getDefaultValue(prop.defaultValue) : undefined),
           fixedValue,
+          conditionalRequired: extractRequiredIf(prop),
           constraints: extractConstraints(program, prop),
           versionTags: extractVersionTags(prop),
         });
@@ -397,6 +416,18 @@ function extractConstraints(program: Program, target: Type): ApiConstraints {
   if (maxLen !== undefined) constraints.maxLength = maxLen;
   if (pat !== undefined) constraints.pattern = pat;
   return constraints;
+}
+
+function extractRequiredIf(target: Type): string | undefined {
+  const node = (target as any).node;
+  if (node?.decorators) {
+    for (const dec of node.decorators) {
+      if (dec.target?.sv === "requiredIf" && dec.arguments?.length > 0) {
+        return String(dec.arguments[0].value);
+      }
+    }
+  }
+  return undefined;
 }
 
 function extractVersionTags(target: Type): VersionTag[] {

@@ -230,7 +230,7 @@ function generatePropertyRows(properties: ApiProperty[], level: number): string 
     const typeDisplay = formatType(prop.type);
 
     // Build constraints: each category on its own line with distinct visual style
-    const constraintHtml = formatConstraintsHtml(prop.required, prop.constraints, prop.defaultValue, prop.fixedValue);
+    const constraintHtml = formatConstraintsHtml(prop.required, prop.constraints, prop.defaultValue, prop.fixedValue, prop.conditionalRequired);
 
     let versionHtml = "";
     for (const vt of prop.versionTags) {
@@ -291,11 +291,15 @@ function formatType(type: ApiType): string {
   }
 }
 
-function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValue?: unknown, fixedValue?: unknown): string {
+function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValue?: unknown, fixedValue?: unknown, conditionalRequired?: string): string {
   const lines: string[] = [];
 
-  // Required tag
-  if (required) {
+  // Required status: mutually exclusive — fixed value > conditional required > required/optional
+  if (fixedValue !== undefined) {
+    lines.push(`<span class="constraint-tag constraint-fixed">固定值</span> <code>${escapeHtml(String(fixedValue))}</code>`);
+  } else if (conditionalRequired) {
+    lines.push(`<span class="constraint-tag constraint-conditional">条件必填</span> ${escapeHtml(conditionalRequired)}`);
+  } else if (required) {
     lines.push('<span class="constraint-tag constraint-required">必填</span>');
   } else {
     lines.push('<span class="constraint-tag constraint-optional">选填</span>');
@@ -319,11 +323,6 @@ function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValu
   // Pattern
   if (cAny.pattern !== undefined) {
     lines.push(`<span class="constraint-item">格式 /${cAny.pattern}/</span>`);
-  }
-
-  // Fixed value (from string literal type, e.g. outType: "json")
-  if (fixedValue !== undefined) {
-    lines.push(`<span class="constraint-tag constraint-fixed">固定值 <code>${escapeHtml(String(fixedValue))}</code></span>`);
   }
 
   // Default value (only shown if no fixed value)

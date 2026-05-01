@@ -1,89 +1,76 @@
 ---
 name: api-doc
 description: >
-  Generate single-file HTML API documentation from API definition files.
-  Supports TypeSpec input with auto-generated curl examples, parameter
-  tables, and version tags. Use when users want to generate API
-  documentation. Extensible via Adapter/Pipeline/Renderer layers.
-triggers:
-  - "生成API文档"
-  - "生成HTML"
-  - "api doc"
-  - "接口文档"
-  - "typespec doc"
+  当需要从 TypeSpec (.tsp) 文件生成单文件 HTML API 文档时使用此 skill。
+  支持自动生成 curl 示例、参数表格、版本标签、Markdown 片段注入。
+  触发词：生成 API 文档、生成接口文档、api doc、typespec doc、生成 HTML 文档。
 ---
 
-# API Documentation Generator
+# api-doc
 
-Generates single-file self-contained HTML API documentation.
+从 TypeSpec 定义生成单文件、自包含的 HTML API 文档。
 
-## Quick Start
+## 安装
+
+**必须使用 bun，禁止使用 npm。**
 
 ```bash
-bun start <input-dir> <output.html>
+cd skills/api-doc
+bun install
 ```
 
-Options:
-- `--adapter <name>` — force specific input adapter (default: auto-detect)
+依赖：`@typespec/compiler`、`@typespec/http`（已配置 npmmirror 源）。
 
-## Architecture
+验证安装：
 
-Three-layer pipeline: **Adapter → Pipeline → Renderer**
-
-```
-Input → Adapter.parse() → Pipeline.process() → Renderer.render() → Output
+```bash
+bun run scripts/index.ts --help
 ```
 
-### Adapter（输入适配）
-Parses input format into `ParsedApiDoc`. Currently supports TypeSpec.
+## 使用
 
-### Pipeline（中间处理）
-Transforms `ParsedApiDoc` between parsing and rendering:
-- **snippet** — injects header/footer markdown snippets
-- **curl** — pre-generates curl commands for each operation
+### 基本命令
 
-### Renderer（输出渲染）
-Converts `ParsedApiDoc` to output format. Currently supports HTML.
-
-## Directory Structure
-
-```
-api-doc/
-  SKILL.md                 # Skill documentation
-  package.json             # Dependencies & scripts
-  samples/                 # Sample TypeSpec API
-  scripts/                 # Executable code
-    index.ts               # CLI entry point
-    adapters/              # Input adapters
-      types.ts             # Adapter interface + shared types
-      typespec-adapter.ts  # TypeSpec adapter
-    pipelines/             # Middle processing
-      types.ts             # Pipeline interface
-      snippet-pipeline.ts  # Snippet injection
-      curl-pipeline.ts     # Curl generation
-    renderers/             # Output renderers
-      types.ts             # Renderer interface
-      html/                # HTML renderer
-        index.ts           # Main renderer
-        loader.ts          # Plugin loader
-        registry.json      # Plugin registry
-        *.ts               # Render plugins
-    templates/             # Template files
-      template.html        # HTML structure
-      styles.css           # CSS (inlined on output)
-      scripts.js           # JS (inlined on output)
+```bash
+bun run scripts/index.ts <input-dir> <output.html>
 ```
 
-## Input: TypeSpec
+- `<input-dir>` — 包含 `.tsp` 文件的目录
+- `<output.html>` — 输出的 HTML 文件路径
+
+### 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--adapter <name>` | 强制指定适配器（默认自动检测） |
+| `--theme <name>` | 使用预设主题（当前可用：`light`） |
+| `--theme-file <path>` | 使用自定义 CSS 主题文件 |
+
+### 示例
+
+```bash
+# 基本用法
+bun run scripts/index.ts ./my-api ./output.html
+
+# 使用 light 主题
+bun run scripts/index.ts ./my-api ./output.html --theme light
+
+# 使用自定义主题
+bun run scripts/index.ts ./my-api ./output.html --theme-file ./my-theme.css
+```
+
+## 输入目录结构
 
 ```
 my-api/
-├── index.tsp         # Shared models, service definition, imports
-├── 用户管理.tsp      # 一个文件 = 一个分组
+├── index.tsp         # 入口文件：import 其他 .tsp、定义 service 和公共 model
+├── 用户管理.tsp      # 每个文件 = 文档中的一个分组
 └── 订单管理.tsp
 ```
 
-`index.tsp` imports group files and defines the service:
+入口文件自动检测顺序：`index.tsp` → `main.tsp` → 第一个 `.tsp` 文件。
+
+### 入口文件模板
 
 ```typespec
 import "@typespec/http";
@@ -103,7 +90,7 @@ model ApiResponse<T> {
 }
 ```
 
-Each group file defines operations in a sub-namespace:
+### 分组文件模板
 
 ```typespec
 namespace MyAPI.用户管理;
@@ -119,29 +106,186 @@ op createUser(
 ): ApiResponse<User> | Error;
 ```
 
-## Key Decorators
+分组规则：优先使用 operation 所在 namespace 上的 `@doc` 作为分组名；无 `@doc` 时使用文件名（去掉 `.tsp` 后缀，`index`/`main` 归入"默认"）。
 
-| Decorator | Purpose |
-|-----------|---------|
-| `@doc("...")` | Description text |
-| `@service(#{title: "..."})` | Service name |
-| `@route("/...")` | API path |
-| `@get/@post/@put/@delete/@patch` | HTTP method |
-| `@header/@query/@path/@body` | Parameter location |
-| `@minValue(n)/@maxValue(n)` | Numeric constraints |
-| `@minLength(n)/@maxLength(n)` | String length constraints |
-| `@pattern("...")` | Regex pattern constraint |
+多文件合并分组：在多个 `.tsp` 文件的 namespace 上声明相同的 `@doc` 值，即可将它们归入同一分组：
 
-## Output Features
+```typespec
+// 转运A.tsp
+@doc("转运")
+namespace TMS;
 
-- Single self-contained HTML file (CSS/JS inlined)
-- Dark sidebar with grouped navigation
-- Parameter tables with type, constraints, required status
-- Auto-generated curl examples
-- Syntax highlighting (highlight.js)
-- Responsive design with sidebar toggle
+// 转运B.tsp
+@doc("转运")
+namespace TMS;
+```
 
-## Dependencies
+以上两个文件的 operation 会合并显示在"转运"分组下。
 
-- `@typespec/compiler` — TypeSpec compiler
-- `@typespec/http` — HTTP decorators
+## TypeSpec 语法特性
+
+### 核心 Decorator 速查
+
+| Decorator | 作用 | 示例 |
+|-----------|------|------|
+| `@doc("...")` | 描述文本，渲染为标题/说明 | `@doc("创建用户")` |
+| `@service(#{title: "..."})` | 服务名称，显示在侧边栏顶部 | `@service(#{title: "TMS"})` |
+| `@route("/...")` | API 路径 | `@route("/users/:id")` |
+| `@get` `@post` `@put` `@delete` `@patch` | HTTP 方法，渲染为彩色标签 | `@post` |
+| `@header` `@query` `@path` `@body` | 参数位置 | `@header authorization: string` |
+| `@minValue(n)` / `@maxValue(n)` | 数值范围约束 | `@minValue(0)` |
+| `@minLength(n)` / `@maxLength(n)` | 字符串长度约束 | `@minLength(6)` |
+| `@pattern("...")` | 正则约束 | `@pattern("^[A-Z]")` |
+| `@added("v2")` / `@removed("v3")` | 版本标签，渲染为徽章 | `@added("2.0")` |
+| `@requiredIf("...")` | 条件必填说明，渲染为标签 | `@requiredIf("当 email 存在时必填")` |
+
+### 添加示例（@opExample）
+
+`@opExample` 为接口添加可交互的请求/响应示例，渲染为选项卡（请求数据 / 返回数据 / cURL）：
+
+```typespec
+@opExample(#{
+  parameters: #{
+    body: #{
+      outType: "json",
+      apiName: "create_user",
+      data: #{ name: "张三", age: 25 }
+    }
+  },
+  returnType: #{
+    code: 200,
+    message: "success",
+    data: #{ id: 1, name: "张三" }
+  }
+}, #{
+  title: "成功响应"    // 示例标题，显示为选项卡名
+})
+@post
+op createUser(@body body: Request): Response;
+```
+
+- 同一接口可添加多个 `@opExample`，每个渲染为一个选项卡
+- `parameters.body` — 请求数据
+- `returnType` — 响应数据
+- cURL 命令根据请求参数自动生成
+- 纯错误示例可省略 `parameters`
+
+### 模型继承与嵌套
+
+```typespec
+// 继承：子模型包含父模型所有字段
+model CreateRequest extends BaseRequest {
+  @doc("用户名")
+  name: string;
+}
+
+// 嵌套对象：渲染为缩进的子表格
+model Order {
+  @doc("收货地址")
+  address: {
+    city: string;
+    street: string;
+  };
+}
+
+// 数组类型
+model ListResponse {
+  items: User[];
+}
+```
+
+### 枚举与联合类型
+
+```typespec
+// 枚举：渲染为 enum (YES, NO)
+enum YesNo {
+  YES,
+  NO,
+}
+
+// 联合类型：渲染为 "200" | "404"
+model Status {
+  code: 200 | 404 | 500;
+}
+```
+
+### 固定值字段
+
+字符串字面量类型自动标记为"固定值"：
+
+```typespec
+model Request {
+  outType: "json";  // 渲染为：固定值 "json"
+  apiName: "specific_api_name";  // 渲染为：固定值 "specific_api_name"
+}
+```
+
+### 条件必填字段
+
+使用 `@requiredIf` 标记在某些条件下必填的字段：
+
+```typespec
+model PaymentRequest {
+  @doc("支付类型")
+  type: "credit" | "debit" | "cash";
+
+  @doc("信用卡号")
+  @requiredIf("当 type 为 credit 时必填")
+  creditCard?: string;
+
+  @doc("邮箱验证状态")
+  @requiredIf("当 email 存在时必填")
+  emailVerified?: boolean;
+}
+```
+
+渲染效果：
+- 有 `@requiredIf` 的字段显示 `条件必填` 标签 + 条件描述（与 `必填`/`选填`/`固定值` 互斥，只显示一种）
+- 支持两种场景：值依赖（某字段为特定值时必填）和存在依赖（某字段存在时必填）
+
+### Markdown 片段
+
+在输入目录中放置 `.md` 文件，可注入自定义内容：
+
+- `header_1_概述.md`、`header_2_认证.md` — 渲染在 API 文档之前
+- `footer_1_变更记录.md` — 渲染在 API 文档之后
+
+命名规则：`{position}_{index}_{name}.md` 或 `{position}_{name}.md`
+
+- `position` — `header` 或 `footer`
+- `index` — 数字前缀，控制排序顺序（可选）
+- `name` — 片段标题，显示为文档中的标题
+
+示例：
+
+```
+my-api/
+├── header_概述.md           → 无数字前缀，按默认顺序
+├── header_1_认证.md         → 排在最前
+├── header_2_错误码.md       → 排在第二
+├── footer_1_变更记录.md
+└── footer_常见问题.md
+```
+
+支持表格、代码块、列表等 Markdown 语法。
+
+## 输出特性
+
+生成的 HTML 文件特性：
+- 单文件自包含（CSS/JS 内联，无外部依赖）
+- 深色侧边栏 + 分组导航
+- 参数表格（类型、约束、必填状态）
+- 自动生成 cURL 示例
+- 语法高亮（highlight.js）
+- 响应式布局，侧边栏可折叠
+- 复制按钮
+
+## TypeSpec 文档
+
+- [TypeSpec 官方文档](https://typespec.io/docs)
+- [TypeSpec HTTP 库](https://typespec.io/docs/libraries/http)
+- [TypeSpec 语言参考](https://typespec.io/docs/language-basics)
+
+## 开发者指南
+
+如需修改或扩展此 skill，参见 [ARCHITECTURE.md](ARCHITECTURE.md)。
