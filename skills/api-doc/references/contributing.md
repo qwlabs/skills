@@ -1,6 +1,6 @@
-# api-doc 架构说明
+# api-doc 开发指南
 
-面向 skill 开发者。如需了解使用方法，参见 [SKILL.md](SKILL.md)。
+面向 skill 开发者和 AI 助手。如需了解使用方法，参见 [SKILL.md](../SKILL.md)；如需了解 TypeSpec 编写方式，参见 [guide.md](guide.md)。
 
 ## 三层流水线
 
@@ -19,7 +19,9 @@ Input → Adapter.parse() → Pipeline.process() → Renderer.render() → Outpu
 ```
 api-doc/
 ├── SKILL.md              # 使用者文档
-├── ARCHITECTURE.md       # 本文件：开发者文档
+├── references/
+│   ├── guide.md          # TypeSpec 编写指南
+│   └── contributing.md   # 本文件：开发者文档
 ├── package.json          # 依赖与脚本
 ├── tsconfig.json
 ├── bunfig.toml           # bun 配置（npmmirror 源）
@@ -43,7 +45,8 @@ api-doc/
     ├── templates/
     │   ├── template.html # HTML 骨架（{{title}} 等占位符）
     │   ├── styles.css    # CSS（内联到输出）
-    │   └── scripts.js    # JS（内联到输出）
+    │   ├── scripts.js    # JS（内联到输出）
+    │   └── vendor/       # highlight.js 库
     └── themes/
         └── light.css     # light 主题 CSS 变量覆盖
 ```
@@ -53,12 +56,12 @@ api-doc/
 ```typescript
 ParsedApiDoc    // 根文档：title, version, groups, headerSnippets, footerSnippets
 ApiGroup        // 分组：name, operations[]
-ApiOperation    // 接口：verb, path, parameters[], body?, responses[], examples[], versionTags[]
-ApiParameter    // 参数：name, type, location, doc, required, constraints
-ApiBody         // 请求体：type, contentType
-ApiResponse     // 响应：statusCode, type?, isError
-ApiType         // 类型系统：string | number | boolean | enum | union | array | object | scalar | any
-ApiProperty     // 对象属性：name, type, doc, required, constraints, fixedValue, defaultValue, conditionalRequired
+ApiOperation    // 接口：verb, path, parameters[], body?, responses[], examples[], versionTags[], curlCommand?
+ApiParameter    // 参数：name, type, location, doc, example, required, defaultValue, constraints
+ApiBody         // 请求体：type, contentType, doc
+ApiResponse     // 响应：statusCode, type?, description, isError
+ApiType         // 类型系统：string | number | boolean | integer | float | datetime | uuid | enum | union | array | object | scalar | any
+ApiProperty     // 对象属性：name, type, doc, example, required, defaultValue, fixedValue, conditionalRequired, constraints, versionTags
 ApiConstraints  // 约束：minimum, maximum, minLength, maxLength, pattern
 VersionTag      // 版本标签：type ("added" | "removed"), version
 ApiExample      // 示例：name, request?, response, curlCommand?
@@ -108,26 +111,30 @@ MarkdownSnippet // 片段：name, content
 
 ### TypeSpec 解析流程（typespec-adapter.ts）
 
-1. `findMainFile()` — 按优先级查找入口文件
+1. `findMainFile()` — 按优先级查找入口文件（index.tsp → main.tsp → 第一个 .tsp）
 2. `compile(NodeHost, mainFile)` — 调用 TypeSpec 编译器
 3. `getAllHttpServices()` — 提取 HTTP 服务
-4. 分组策略：@doc(namespace) > 子目录用父目录名 / 根目录用文件名 > "默认"
-5. 接口名策略：@doc(operation) > 文件名（去 .tsp）> op.name
-6. `resolveType()` — 递归解析类型系统（支持 Model、Enum、Union、Array、Scalar、继承）
-7. `extractDocExamples()` — 从 `@opExample` decorator 提取示例数据
-8. `extractDocRequired()` — 从 `@docRequired` decorator 提取条件必填说明
-9. `collectInheritedProperties()` — 按 base chain 收集继承属性
+4. `buildOpSourceFile()` — 构建操作到源文件的映射（namespace @doc > 路径推导）
+5. `groupOperationsByFile()` — 分组：@doc(namespace) > 子目录用父目录名 / 根目录用文件名 > "默认"
+6. `extractOperation()` — 提取接口：@doc(operation) > 文件名（去 .tsp）> op.name
+7. `resolveType()` — 递归解析类型系统（支持 Model、Enum、Union、Array、Scalar、继承、模板声明 → any）
+8. `resolveScalarBase()` — Scalar 基础类型映射（int32/int64 → integer, float/double → float, datetime → datetime, uuid → uuid）
+9. `extractDocExamples()` — 从 `@opExample` 提取示例数据，包含 EnumMember/EnumValue 深拷贝处理（`deepCloneValue()`）
+10. `extractRequiredIf()` — 从 AST 节点提取 `@requiredIf` 条件必填说明（非标准 TypeSpec decorator，通过 AST 解析）
+11. `collectInheritedProperties()` — 按 base chain 收集继承属性，子类属性覆盖父类
+12. `getExampleValue()` — 从 `@example` decorator 提取示例值
 
 ### cURL 生成（curl-pipeline.ts）
 
-- 为每个 operation 生成带占位符的 cURL（`{string}`, `{token}`, `{baseUrl}`）
-- 为每个 example 生成带实际数据的 cURL
+- `generateCurl()` — 为每个 operation 生成带占位符的 cURL（`{string}`, `{token}`, `{baseUrl}`）
+- `generateExampleCurl()` — 为每个 example 生成带实际数据的 cURL
+- `generatePlaceholder()` — 为每种 ApiType 生成示例值
 
 ### HTML 渲染（renderers/html/index.ts）
 
 - 插件系统：text、badge、tag、code、link、copy
-- 内置简易 Markdown → HTML 转换器
-- 模板变量：`{{title}}`, `{{styles}}`, `{{scripts}}`, `{{sidebar_content}}`, `{{api_content}}`, `{{version}}`
+- 内置简易 Markdown → HTML 转换器（支持标题、表格、代码块、列表、链接、加粗、斜体）
+- 模板变量：`{{title}}`, `{{hljs_theme}}`, `{{hljs}}`, `{{styles}}`, `{{scripts}}`, `{{sidebar_content}}`, `{{api_content}}`, `{{version}}`
 
 ## 构建与调试
 
