@@ -96,6 +96,7 @@ export interface ApiProperty {
   defaultValue?: unknown;
   fixedValue?: unknown;
   conditionalRequired?: string;
+  conditionalOptional?: string;
   constraints: ApiConstraints;
   versionTags: VersionTag[];
 }

@@ -369,6 +369,7 @@ function resolveType(program: Program, type: Type): ApiType {
           defaultValue: fixedValue !== undefined ? undefined : (prop.defaultValue !== undefined ? getDefaultValue(prop.defaultValue) : undefined),
           fixedValue,
           conditionalRequired: extractRequiredIf(prop),
+          conditionalOptional: extractOptionalIf(prop),
           constraints: extractConstraints(program, prop),
           versionTags: extractVersionTags(prop),
         });
@@ -467,6 +468,18 @@ function extractRequiredIf(target: Type): string | undefined {
   if (node?.decorators) {
     for (const dec of node.decorators) {
       if (dec.target?.sv === "requiredIf" && dec.arguments?.length > 0) {
+        return String(dec.arguments[0].value);
+      }
+    }
+  }
+  return undefined;
+}
+
+function extractOptionalIf(target: Type): string | undefined {
+  const node = (target as any).node;
+  if (node?.decorators) {
+    for (const dec of node.decorators) {
+      if (dec.target?.sv === "optionalIf" && dec.arguments?.length > 0) {
         return String(dec.arguments[0].value);
       }
     }

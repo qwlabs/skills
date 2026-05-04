@@ -9,8 +9,8 @@ model BaseResponse<T> {
   @doc("业务信息")
   message?: string;
   @doc("业务数据")
-  @requiredIf("code=200")
-  data: T;
+  @optionalIf("code=200")
+  data?: T;
 }
 
 model HualeiRequest {
@@ -24,7 +24,7 @@ model HualeiResponse<T> {
   @doc("错误信息")
   message?: string;
   @doc("数据")
-  @requiredIf("code=200")
+  @optionalIf("code=200")
   data?: BaseResponse<T>;
 }
 
