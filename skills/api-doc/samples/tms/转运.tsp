@@ -24,17 +24,17 @@ model StationLayContainerRequest extends HualeiRequest {
     body: #{
       outType: "json",
       apiName: "hy_tms_station_lay_container_WebApi",
-      data: #{ stationCodes: #["ST-001"] }
+      data: #{ stationCodes: #["A1_10__001"] }
     }
   },
   returnType: #{
     code: 200,
     message: "success",
     data: #{
-      code: "0",
+      code: "200",
       message: "操作成功",
       data: #{
-        code: "ST-001",
+        code: "A1_10__001",
         locked: YesNo.YES,
         hasContainer: YesNo.YES,
         container: "CT-20260430-001"
@@ -42,31 +42,26 @@ model StationLayContainerRequest extends HualeiRequest {
     }
   }
 }, #{
-  title: "成功响应"
+  title: "操作成功"
 })
 @opExample(#{
   parameters: #{
     body: #{
       outType: "json",
       apiName: "hy_tms_station_lay_container_WebApi",
-      data: #{ stationCodes: #["ST-001", "ST-002", "ST-003"] }
+      data: #{ stationCodes: #["A1_10__001", "A1_10__002", "A1_10__003"] }
     }
   },
   returnType: #{
     code: 200,
     message: "success",
     data: #{
-      code: "0",
-      message: "操作成功",
-      data: #{
-        code: "ST-003",
-        locked: YesNo.YES,
-        hasContainer: YesNo.NO
-      }
+      code: "400",
+      message: "站点已经被锁定"
     }
   }
 }, #{
-  title: "批量查询"
+  title: "操作失败"
 })
 @opExample(#{
   returnType: #{
@@ -74,7 +69,7 @@ model StationLayContainerRequest extends HualeiRequest {
     message: "Server Error"
   }
 }, #{title: "平台错误"})
-op station_lay_container(
+op hy_tms_station_lay_container_WebApi(
   @body body: StationLayContainerRequest
 ): HualeiResponse<Station>;
 

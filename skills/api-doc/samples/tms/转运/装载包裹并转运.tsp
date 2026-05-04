@@ -22,8 +22,16 @@ model PostTransportRequest extends HualeiRequest {
     };
 }
 
+
+
 @route("/orbit/modeling/webApi")
 @post
-op post_transport(
+@opExample(#{
+  returnType: #{
+    code: 1001,
+    message: "Server Error"
+  }
+}, #{title: "平台错误"})
+op hy_tms_post_transport_WebApi(
   @body body: PostTransportRequest
 ): HualeiResponse<Task>;
