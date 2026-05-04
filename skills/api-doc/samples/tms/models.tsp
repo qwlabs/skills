@@ -9,7 +9,8 @@ model BaseResponse<T> {
   @doc("业务信息")
   message?: string;
   @doc("业务数据")
-  data?: T;
+  @requiredIf("code=200")
+  data: T;
 }
 
 model HualeiRequest {
@@ -18,13 +19,12 @@ model HualeiRequest {
 }
 
 model HualeiResponse<T> {
-  @example(200)
-  @example(1001)
   @doc("状态")
   code: integer;
   @doc("错误信息")
   message?: string;
   @doc("数据")
+  @requiredIf("code=200")
   data?: BaseResponse<T>;
 }
 
@@ -51,19 +51,28 @@ model PageResponse<T> {
 }
 
 enum YesNo {
+  @doc("是")
   YES,
+  @doc("否")
   NO,
 }
 
 
 enum ExecutionStatus {
-    PENDING,
-    READY,
-    EXECUTING,
-    COMPLETED,
-    FAILED,
-    CANCELLED,
-    TIMEOUT,
+  @doc("等待")
+  PENDING,
+  @doc("就绪")
+  READY,
+  @doc("执行中")
+  EXECUTING,
+  @doc("已完成")
+  COMPLETED,
+  @doc("已失败")
+  FAILED,
+  @doc("已取消")
+  CANCELLED,
+  @doc("超时")
+  TIMEOUT,
 }
 
 model Payload {
