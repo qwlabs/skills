@@ -1,19 +1,17 @@
-// pipelines/curl-pipeline.ts
-import type { ParsedApiDoc, ApiOperation, ApiType, ApiExample } from "../adapters/types";
-import type { Pipeline, PipelineContext } from "./types";
+// pipeline/stages/curl-generate.ts
+import type { ApiOperation, ApiType, ApiExample, Stage, StageContext } from "../types";
 
-export const curlPipeline: Pipeline = {
-  name: "curl",
-  process(doc: ParsedApiDoc, _ctx: PipelineContext): ParsedApiDoc {
-    for (const group of doc.groups) {
+export const curlGenerate: Stage = {
+  name: "curl-generate",
+  process(ctx: StageContext): void {
+    for (const group of ctx.doc.groups) {
       for (const op of group.operations) {
-        op.curlCommand = generateCurl(op, doc.baseUrl);
+        op.curlCommand = generateCurl(op, ctx.doc.baseUrl);
         for (const ex of op.examples) {
-          ex.curlCommand = generateExampleCurl(op, ex, doc.baseUrl);
+          ex.curlCommand = generateExampleCurl(op, ex, ctx.doc.baseUrl);
         }
       }
     }
-    return doc;
   },
 };
 
@@ -73,7 +71,7 @@ function buildBodyArg(body: ApiOperation["body"]): string | null {
   return JSON.stringify(json, null, 2);
 }
 
-export function generatePlaceholder(type: ApiType, useExample = false): unknown {
+function generatePlaceholder(type: ApiType, useExample = false): unknown {
   switch (type.kind) {
     case "string":
       return "{string}";
@@ -110,11 +108,6 @@ export function generatePlaceholder(type: ApiType, useExample = false): unknown 
     default:
       return null;
   }
-}
-
-/** @deprecated Use generatePlaceholder(type, true) instead */
-export function typeToJson(type: ApiType): unknown {
-  return generatePlaceholder(type, true);
 }
 
 function capitalizeHeader(name: string): string {

@@ -1,18 +1,20 @@
-// index.ts — CLI entry point: Adapter → Pipeline → Renderer
+// index.ts — CLI entry point: Stage Pipeline → Output
 import { existsSync, writeFileSync, readFileSync, readdirSync } from "fs";
-import { join, dirname, resolve, basename } from "path";
+import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import { typespecAdapter } from "./adapters/typespec-adapter";
-import { snippetPipeline } from "./pipelines/snippet-pipeline";
-import { curlPipeline } from "./pipelines/curl-pipeline";
-import { htmlRenderer } from "./renderers/html";
-import type { Adapter } from "./adapters/types";
-import type { Pipeline } from "./pipelines/types";
+import { runPipeline } from "./pipeline/runner";
+import { typespecParse } from "./pipeline/stages/typespec-parse";
+import { snippetInject } from "./pipeline/stages/snippet-inject";
+import { curlGenerate } from "./pipeline/stages/curl-generate";
+import { sidebarBuild } from "./pipeline/stages/sidebar-build";
+import { sectionBuild } from "./pipeline/stages/section-build";
+import { assetLoad } from "./pipeline/stages/asset-load";
+import { htmlEmit } from "./pipeline/emit/html-emit";
+import type { Stage } from "./pipeline/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const adapters: Adapter[] = [typespecAdapter];
-const pipelines: Pipeline[] = [snippetPipeline, curlPipeline];
+const stages: Stage[] = [typespecParse, snippetInject, curlGenerate, sidebarBuild, sectionBuild, assetLoad, htmlEmit];
 
 function buildRevision(version: string): string {
   const now = new Date();
@@ -46,28 +48,9 @@ function resolveTheme(themeName: string | undefined, themeFile: string | undefin
   return undefined;
 }
 
-function detectAdapter(inputDir: string, adapterName?: string): Adapter {
-  if (adapterName) {
-    const adapter = adapters.find((a) => a.name === adapterName);
-    if (!adapter) {
-      console.error(`Adapter "${adapterName}" not found. Available: ${adapters.map((a) => a.name).join(", ")}`);
-      process.exit(1);
-    }
-    return adapter;
-  }
-  for (const adapter of adapters) {
-    if (adapter.detect(inputDir)) {
-      return adapter;
-    }
-  }
-  console.error("No suitable adapter found for input: " + inputDir);
-  process.exit(1);
-}
-
 async function main() {
   const args = process.argv.slice(2);
 
-  let adapterName: string | undefined;
   let themeName: string | undefined;
   let themeFile: string | undefined;
   const positional: string[] = [];
@@ -75,11 +58,10 @@ async function main() {
 
   for (const arg of args) {
     if (nextFlag) {
-      if (nextFlag === "--adapter") adapterName = arg;
-      else if (nextFlag === "--theme") themeName = arg;
+      if (nextFlag === "--theme") themeName = arg;
       else if (nextFlag === "--theme-file") themeFile = arg;
       nextFlag = undefined;
-    } else if (arg === "--adapter" || arg === "--theme" || arg === "--theme-file") {
+    } else if (arg === "--theme" || arg === "--theme-file") {
       nextFlag = arg;
     } else {
       positional.push(arg);
@@ -87,10 +69,9 @@ async function main() {
   }
 
   if (positional.length < 1) {
-    console.log("Usage: bun run index.ts <input-dir> [output] [--adapter <name>] [--theme <name>] [--theme-file <path>]");
+    console.log("Usage: bun run index.ts <input-dir> [output] [--theme <name>] [--theme-file <path>]");
     console.log("");
     console.log("  output: 可选，默认输出至 <input-dir>/../<dirName>-<revision>.html");
-    console.log("Adapters: " + adapters.map((a) => a.name).join(", "));
     console.log("Themes: light (or list available with --theme-file)");
     process.exit(1);
   }
@@ -103,35 +84,32 @@ async function main() {
     process.exit(1);
   }
 
-  const adapter = detectAdapter(inputDir, adapterName);
-  console.log(`Using adapter: ${adapter.name}`);
   console.log("Parsing: " + inputDir);
-
-  let doc = await adapter.parse(inputDir);
-
-  const revision = buildRevision(doc.version);
-
-  let totalOps = 0;
-  for (const group of doc.groups) {
-    totalOps += group.operations.length;
-    for (const op of group.operations) {
-      console.log(`  [${group.name}] ${op.verb.toUpperCase()} ${op.path} — ${op.name}`);
-    }
-  }
-  console.log(`Total: ${totalOps} operations in ${doc.groups.length} groups`);
-
-  for (const pipeline of pipelines) {
-    console.log(`Pipeline: ${pipeline.name}`);
-    doc = pipeline.process(doc, { inputDir, options: {} });
-  }
 
   const templateDir = join(__dirname, "templates");
   const themeCSS = resolveTheme(themeName, themeFile, templateDir);
-  console.log("Generating HTML...");
-  const output = await htmlRenderer.render(doc, { version: revision, templateDir, themeCSS });
+
+  const model = await runPipeline(stages, { inputDir, templateDir, themeCSS, version: "" });
+
+  const revision = buildRevision(model.meta.version);
+
+  // 打印操作列表
+  let totalOps = 0;
+  for (const section of model.sections) {
+    if (section.kind === "operation") {
+      totalOps++;
+      const op = section.op;
+      console.log(`  [${op.group}] ${op.verb.toUpperCase()} ${op.path} — ${op.name}`);
+    }
+  }
+  const groupNames = new Set(model.sidebar.filter(e => e.kind === "group-title").map(e => e.label));
+  console.log(`Total: ${totalOps} operations in ${groupNames.size} groups`);
 
   const outputPath = positional[1] || join(dirname(resolve(inputDir)), `${inputDirName}-${revision}.html`);
   console.log("Writing: " + outputPath);
+
+  // 替换模板中的版本号（pipeline 用空 version 运行，这里替换为含时间戳的 revision）
+  const output = model.assets.finalOutput.replace(/\{\{version\}\}/g, revision);
   writeFileSync(outputPath, output, "utf-8");
   console.log("Done! Revision: " + revision);
 }

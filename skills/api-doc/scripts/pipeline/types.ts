@@ -1,11 +1,7 @@
-// adapters/types.ts
-// Adapter interface + all shared types
+// pipeline/types.ts
+// Unified Stage Pipeline — 全部类型定义
 
-export interface Adapter {
-  readonly name: string;
-  detect(inputDir: string): boolean;
-  parse(inputDir: string): Promise<ParsedApiDoc>;
-}
+// --- API 数据模型 ---
 
 export interface ParsedApiDoc {
   title: string;
@@ -111,5 +107,53 @@ export interface ApiConstraints {
 
 export interface VersionTag {
   type: "added" | "removed";
+  version: string;
+}
+
+// --- Document Model ---
+
+export interface DocumentModel {
+  meta: { title: string; version: string };
+  sidebar: SidebarEntry[];
+  sections: ContentSection[];
+  assets: DocumentAssets;
+}
+
+export interface SidebarEntry {
+  kind: "group-title" | "operation-link" | "snippet-link";
+  label: string;
+  anchorId?: string;
+}
+
+export type ContentSection =
+  | { kind: "snippet"; anchorId: string; title: string; content: string }
+  | { kind: "operation"; op: ApiOperation }
+  | { kind: "footer"; version: string };
+
+export interface DocumentAssets {
+  styles: string;
+  scripts: string;
+  hljsThemeCSS: string;
+  hljsBundle: string;
+  finalOutput: string;
+}
+
+// --- Stage Interface ---
+
+export interface Stage {
+  readonly name: string;
+  process(ctx: StageContext): void | Promise<void>;
+}
+
+export interface StageContext {
+  doc: ParsedApiDoc;
+  model: DocumentModel;
+  config: StageConfig;
+}
+
+export interface StageConfig {
+  inputDir: string;
+  templateDir: string;
+  themeCSS?: string;
   version: string;
 }

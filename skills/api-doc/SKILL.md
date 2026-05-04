@@ -44,7 +44,7 @@ bun run scripts/index.ts --help
 ## 使用
 
 ```bash
-bun run scripts/index.ts <input-dir> [output] [--adapter <name>] [--theme <name>] [--theme-file <path>]
+bun run scripts/index.ts <input-dir> [output] [--theme <name>] [--theme-file <path>]
 ```
 
 - `<input-dir>` — 包含 `.tsp` 文件的目录（必填）
@@ -54,7 +54,6 @@ bun run scripts/index.ts <input-dir> [output] [--adapter <name>] [--theme <name>
 
 | 选项 | 说明 |
 |------|------|
-| `--adapter <name>` | 强制指定适配器（默认自动检测） |
 | `--theme <name>` | 使用预设主题（当前可用：`light`） |
 | `--theme-file <path>` | 使用自定义 CSS 主题文件 |
 
@@ -76,4 +75,4 @@ bun run scripts/index.ts ./samples/tms --theme light
 | 文档 | 内容 |
 |------|------|
 | [编写指南](references/guide.md) | 输入目录结构、版本配置、分组规则、Decorator 速查、模型定义、Markdown 片段 |
-| [开发指南](references/contributing.md) | 三层流水线、核心类型、扩展点、开发者指南 |
+| [开发指南](references/contributing.md) | Stage Pipeline、核心类型、扩展点、开发者指南 |

@@ -1,5 +1,5 @@
-// adapters/typespec-adapter.ts
-// Wraps the TypeSpec parser logic as an Adapter implementation.
+// pipeline/stages/typespec-parse.ts
+// TypeSpec 解析 Stage — 编译 .tsp 文件并填充 ctx.doc
 
 import { join, resolve } from "path";
 import {
@@ -19,16 +19,12 @@ import type {
   Model,
   ModelProperty,
   Type,
-  Enum as TspEnum,
-  Union as TspUnion,
   Namespace,
-  DecoratorApplication,
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import type {
-  Adapter,
   ParsedApiDoc,
   ApiGroup,
   ApiOperation as ApiOperationType,
@@ -39,18 +35,25 @@ import type {
   ApiProperty,
   ApiConstraints,
   VersionTag,
-} from "./types";
+  Stage,
+  StageContext,
+} from "../types";
 
-export const typespecAdapter: Adapter = {
-  name: "typespec",
+export const typespecParse: Stage = {
+  name: "typespec-parse",
+  async process(ctx: StageContext): Promise<void> {
+    const inputDir = resolve(ctx.config.inputDir);
+    const doc = await parseTypeSpecDir(inputDir);
 
-  detect(inputDir: string): boolean {
-    const entries = readdirSync(inputDir);
-    return entries.some((e: string) => e.endsWith(".tsp"));
-  },
-
-  async parse(inputDir: string): Promise<ParsedApiDoc> {
-    return parseTypeSpecDir(resolve(inputDir));
+    ctx.doc.title = doc.title;
+    ctx.doc.version = doc.version;
+    ctx.doc.description = doc.description;
+    ctx.doc.baseUrl = doc.baseUrl;
+    ctx.doc.groups = doc.groups;
+    ctx.doc.headerSnippets = doc.headerSnippets;
+    ctx.doc.footerSnippets = doc.footerSnippets;
+    ctx.model.meta.title = doc.title;
+    ctx.model.meta.version = doc.version;
   },
 };
 
@@ -60,14 +63,11 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     noEmit: true,
   });
 
-  // Filter out unknown decorator errors (e.g. @docRequired) — only treat other errors as fatal
   const errors = program.diagnostics.filter(
     (d) => d.severity === "error" && d.code !== "invalid-ref"
   );
   if (errors.length > 0) {
-      const msgs = errors
-        .map((d) => String(d.message))
-        .join("\n");
+    const msgs = errors.map((d) => String(d.message)).join("\n");
     throw new Error(`TypeSpec compilation failed:\n${msgs}`);
   }
 
@@ -87,9 +87,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
   const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
 
-  // Build a map: operation → source file basename (without .tsp) for grouping
   const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
-
   const operationMap = groupOperationsByFile(service.operations, opSourceFile);
 
   const groups: ApiGroup[] = [];
@@ -161,8 +159,6 @@ function buildOpSourceFile(
 
   for (const httpOp of httpOps) {
     const op = httpOp.operation;
-
-    // 优先使用 operation 所在 namespace 上 @doc("...") 作为分组名
     const ns = getOperationNamespace(op);
     if (ns) {
       const doc = getDoc(program, ns);
@@ -171,8 +167,6 @@ function buildOpSourceFile(
         continue;
       }
     }
-
-    // 回退到路径推导
     const node = op.node as any;
     const filePath: string | undefined = node?.parent?.file?.path;
     if (filePath) {
@@ -189,9 +183,7 @@ function deriveGroupNameFromPath(filePath: string, inputDir: string): string {
   const normalizedInput = inputDir.replace(/\/+$/, "");
   const normalizedFile = filePath.replace(/\/+$/, "");
 
-  // 计算相对路径
   if (!normalizedFile.startsWith(normalizedInput + "/") && normalizedFile !== normalizedInput) {
-    // 文件不在 inputDir 下（理论上不该发生），用文件名兜底
     const basename = normalizedFile.split("/").pop() || "";
     const name = basename.replace(/\.tsp$/, "");
     return name === "index" || name === "main" ? "默认" : name;
@@ -200,14 +192,11 @@ function deriveGroupNameFromPath(filePath: string, inputDir: string): string {
   const relative = normalizedFile.slice(normalizedInput.length + 1);
   const parts = relative.split("/");
 
-  // parts.length === 1 → 根目录文件，用文件名
-  // parts.length >= 2 → 子目录文件，用直接父目录名（倒数第二个部分）
   if (parts.length === 1) {
     const name = parts[0].replace(/\.tsp$/, "");
     return name === "index" || name === "main" ? "默认" : name;
   }
 
-  // 子目录文件：用直接父目录名
   const parentDir = parts[parts.length - 2];
   return parentDir;
 }
@@ -226,7 +215,6 @@ function groupOperationsByFile(
 
   for (const httpOp of httpOps) {
     const groupName = opSourceFile.get(httpOp.operation) || "默认";
-
     if (!groups.has(groupName)) {
       groups.set(groupName, []);
     }
@@ -347,10 +335,8 @@ function resolveType(program: Program, type: Type): ApiType {
         };
       }
       const properties: ApiProperty[] = [];
-      // Collect properties from base models first, then own properties
       const allProps = collectInheritedProperties(type);
       for (const [propName, prop] of allProps) {
-        // String literal type = fixed value (e.g. outType: "json")
         let fixedValue: unknown;
         let resolvedType: ApiType;
         if (prop.type.kind === "String") {
@@ -413,7 +399,6 @@ function resolveType(program: Program, type: Type): ApiType {
 
 function collectInheritedProperties(model: Model): Map<string, ModelProperty> {
   const props = new Map<string, ModelProperty>();
-  // Walk base chain first so own properties override
   if (model.baseModel) {
     for (const [name, prop] of collectInheritedProperties(model.baseModel)) {
       props.set(name, prop);
@@ -506,8 +491,8 @@ function isErrorResponse(statusCode: string): boolean {
   return !isNaN(code) && code >= 400;
 }
 
-function extractDocExamples(target: Type): import("./types").ApiExample[] {
-  const examples: import("./types").ApiExample[] = [];
+function extractDocExamples(target: Type): import("../types").ApiExample[] {
+  const examples: import("../types").ApiExample[] = [];
   for (const dec of (target as any).decorators || []) {
     const decName = dec.definition?.name;
     if (decName === "@opExample" && dec.args.length >= 1) {
@@ -532,9 +517,7 @@ function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
   if (seen.has(val)) return undefined;
   seen.add(val);
   const obj = val as Record<string, unknown>;
-  // TypeSpec EnumMember → use its name
   if (obj.kind === "EnumMember" && typeof obj.name === "string") return obj.name;
-  // TypeSpec EnumValue wrapper { value: EnumMember } → unwrap to member name
   if (obj.valueKind === "EnumValue" && obj.value && typeof (obj.value as any).name === "string") {
     return (obj.value as any).name;
   }

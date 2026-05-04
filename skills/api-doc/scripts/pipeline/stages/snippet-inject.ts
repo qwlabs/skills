@@ -1,15 +1,13 @@
-// pipelines/snippet-pipeline.ts
+// pipeline/stages/snippet-inject.ts
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import type { ParsedApiDoc, MarkdownSnippet } from "../adapters/types";
-import type { Pipeline, PipelineContext } from "./types";
+import type { MarkdownSnippet, Stage, StageContext } from "../types";
 
-export const snippetPipeline: Pipeline = {
-  name: "snippet",
-  process(doc: ParsedApiDoc, ctx: PipelineContext): ParsedApiDoc {
-    doc.headerSnippets = loadSnippets(ctx.inputDir, "header");
-    doc.footerSnippets = loadSnippets(ctx.inputDir, "footer");
-    return doc;
+export const snippetInject: Stage = {
+  name: "snippet-inject",
+  process(ctx: StageContext): void {
+    ctx.doc.headerSnippets = loadSnippets(ctx.config.inputDir, "header");
+    ctx.doc.footerSnippets = loadSnippets(ctx.config.inputDir, "footer");
   },
 };
 

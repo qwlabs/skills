@@ -85,7 +85,7 @@ model Payload {
 }
 
 model Task {
-  @doc("包裹编码")
+  @doc("任务ID")
   id: string;
   @doc("装载站点编码")
   loadStationCode: string;
