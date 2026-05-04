@@ -1,8 +1,10 @@
 // pipeline/stages/curl-generate.ts
-import type { ApiOperation, ApiType, ApiExample, Stage, StageContext } from "../types";
+import type { ApiOperation, ApiType, ApiExample, DagStage, StageContext } from "../types";
 
-export const curlGenerate: Stage = {
+export const curlGenerate: DagStage = {
   name: "curl-generate",
+  requires: ["doc.api"],
+  provides: ["doc.curl"],
   process(ctx: StageContext): void {
     for (const group of ctx.doc.groups) {
       for (const op of group.operations) {

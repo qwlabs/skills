@@ -1,10 +1,12 @@
 // pipeline/stages/snippet-inject.ts
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import type { MarkdownSnippet, Stage, StageContext } from "../types";
+import type { MarkdownSnippet, DagStage, StageContext } from "../types";
 
-export const snippetInject: Stage = {
+export const snippetInject: DagStage = {
   name: "snippet-inject",
+  requires: ["doc.api"],
+  provides: ["doc.snippets"],
   process(ctx: StageContext): void {
     ctx.doc.headerSnippets = loadSnippets(ctx.config.inputDir, "header");
     ctx.doc.footerSnippets = loadSnippets(ctx.config.inputDir, "footer");

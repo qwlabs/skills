@@ -10,11 +10,11 @@ import { sidebarBuild } from "./pipeline/stages/sidebar-build";
 import { sectionBuild } from "./pipeline/stages/section-build";
 import { assetLoad } from "./pipeline/stages/asset-load";
 import { htmlEmit } from "./pipeline/emit/html-emit";
-import type { Stage } from "./pipeline/types";
+import type { DagStage } from "./pipeline/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const stages: Stage[] = [typespecParse, snippetInject, curlGenerate, sidebarBuild, sectionBuild, assetLoad, htmlEmit];
+const stages: DagStage[] = [typespecParse, snippetInject, curlGenerate, sidebarBuild, sectionBuild, assetLoad, htmlEmit];
 
 function buildRevision(version: string): string {
   const now = new Date();

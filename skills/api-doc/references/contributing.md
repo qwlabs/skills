@@ -25,15 +25,17 @@ interface StageContext {
 
 ### Pipeline 阶段
 
-| # | 阶段 | 职责 | 操作对象 |
-|---|------|------|----------|
-| 1 | typespec-parse | 编译 .tsp 文件，填充 ParsedApiDoc | `ctx.doc` |
-| 2 | snippet-inject | 加载 header/footer Markdown 片段 | `doc.headerSnippets`, `doc.footerSnippets` |
-| 3 | curl-generate | 为 operation 和 example 生成 cURL 命令 | `doc.groups[].operations[]` |
-| 4 | sidebar-build | 构建侧边栏导航结构 | `model.sidebar` |
-| 5 | section-build | 构建内容段落列表（snippet/operation/footer） | `model.sections` |
-| 6 | asset-load | 加载 CSS/JS/hljs 等资源 | `model.assets` |
-| 7 | html-emit | 将 DocumentModel 序列化为 HTML | `model.assets.finalOutput` |
+| # | 阶段 | 职责 | requires | provides |
+|---|------|------|----------|----------|
+| 1 | typespec-parse | 编译 .tsp 文件，填充 ParsedApiDoc | — | `doc.api`, `model.meta` |
+| 2 | snippet-inject | 加载 header/footer Markdown 片段 | `doc.api` | `doc.snippets` |
+| 3 | curl-generate | 为 operation 和 example 生成 cURL 命令 | `doc.api` | `doc.curl` |
+| 4 | sidebar-build | 构建侧边栏导航结构 | `doc.api`, `doc.snippets` | `model.sidebar` |
+| 5 | section-build | 构建内容段落列表（snippet/operation/footer） | `doc.api`, `doc.snippets`, `doc.curl` | `model.sections` |
+| 6 | asset-load | 加载 CSS/JS/hljs 等资源 | — | `model.assets` |
+| 7 | html-emit | 将 DocumentModel 序列化为 HTML | `model.sidebar`, `model.sections`, `model.assets`, `model.meta` | `model.output` |
+
+Runner 根据 `requires`/`provides` 构建有向无环图（DAG），自动拓扑排序并并发执行无依赖冲突的 stage。
 
 ### DocumentModel
 
@@ -138,16 +140,32 @@ StageContext    // 阶段上下文：doc + model + config
 1. 在 `pipeline/stages/` 下创建新的解析 Stage（如 `openapi-parse.ts`）
 2. 在 `index.ts` 中替换 `typespecParse` 为新 Stage
 
+### DataKey 契约
+
+Stage 间通过 `DataKey` 声明数据依赖。可用的 key：
+
+| DataKey | 含义 | 生产者 | 消费者 |
+|---------|------|--------|--------|
+| `doc.api` | ParsedApiDoc 核心数据 | typespec-parse | snippet-inject, curl-generate, sidebar-build, section-build |
+| `doc.snippets` | header/footer Markdown 片段 | snippet-inject | sidebar-build, section-build |
+| `doc.curl` | cURL 命令 | curl-generate | section-build |
+| `model.meta` | 文档元信息 | typespec-parse | html-emit |
+| `model.sidebar` | 侧边栏结构 | sidebar-build | html-emit |
+| `model.sections` | 内容段落 | section-build | html-emit |
+| `model.assets` | CSS/JS/hljs 资源 | asset-load | html-emit |
+| `model.output` | 最终输出 | html-emit | (pipeline 返回值) |
+
 ### 添加新 Stage
 
-1. 在 `pipeline/stages/` 下创建文件，实现 `Stage` 接口：
+1. 在 `pipeline/stages/` 下创建文件，实现 `DagStage` 接口：
    ```typescript
-   interface Stage {
-     readonly name: string;
-     process(ctx: StageContext): void | Promise<void>;
+   interface DagStage extends Stage {
+     readonly requires: readonly DataKey[];  // 此 stage 需要的数据
+     readonly provides: readonly DataKey[];  // 此 stage 产出的数据
    }
    ```
-2. 在 `index.ts` 的 `stages` 数组中按需插入
+2. 声明 `requires`（读哪些数据）和 `provides`（写哪些数据），Runner 会自动推断执行顺序和并发机会
+3. 在 `index.ts` 的 `stages` 数组中添加（顺序无关，DAG 决定执行顺序）
 
 ### 添加新输出格式
 

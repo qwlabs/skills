@@ -2,14 +2,16 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { render } from "./loader";
-import type { Stage, StageContext, SidebarEntry, ContentSection } from "../types";
+import type { DagStage, StageContext, SidebarEntry, ContentSection } from "../types";
 import type { ApiOperation } from "../types";
 import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge } from "./html-helpers";
 import { generateParameterRow, generatePropertyRows } from "./html-props";
 import { generateExampleSection } from "./html-examples";
 
-export const htmlEmit: Stage = {
+export const htmlEmit: DagStage = {
   name: "html-emit",
+  requires: ["model.sidebar", "model.sections", "model.assets", "model.meta"],
+  provides: ["model.output"],
   process(ctx: StageContext): void {
     const template = loadTemplate(ctx.config.templateDir);
     const sidebarHtml = renderSidebar(ctx.model.sidebar);

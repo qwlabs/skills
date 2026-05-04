@@ -1,9 +1,11 @@
 // pipeline/stages/sidebar-build.ts
-import type { Stage, StageContext, SidebarEntry } from "../types";
+import type { DagStage, StageContext, SidebarEntry } from "../types";
 import { slugify } from "../emit/html-helpers";
 
-export const sidebarBuild: Stage = {
+export const sidebarBuild: DagStage = {
   name: "sidebar-build",
+  requires: ["doc.api", "doc.snippets"],
+  provides: ["model.sidebar"],
   process(ctx: StageContext): void {
     const entries: SidebarEntry[] = [];
 

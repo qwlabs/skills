@@ -138,6 +138,23 @@ export interface DocumentAssets {
   finalOutput: string;
 }
 
+// --- DAG Stage Interface ---
+
+export type DataKey =
+  | "doc.api"            // ParsedApiDoc 的核心数据 (groups, title, version...)
+  | "doc.snippets"       // headerSnippets + footerSnippets
+  | "doc.curl"           // operations[].curlCommand + examples[].curlCommand
+  | "model.sidebar"      // model.sidebar
+  | "model.sections"     // model.sections
+  | "model.meta"         // model.meta
+  | "model.assets"       // model.assets (styles, scripts, hljs, finalOutput)
+  | "model.output";      // model.assets.finalOutput
+
+export interface DagStage extends Stage {
+  readonly requires: readonly DataKey[];
+  readonly provides: readonly DataKey[];
+}
+
 // --- Stage Interface ---
 
 export interface Stage {

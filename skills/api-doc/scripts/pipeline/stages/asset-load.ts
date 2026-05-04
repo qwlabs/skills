@@ -1,10 +1,12 @@
 // pipeline/stages/asset-load.ts
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import type { Stage, StageContext } from "../types";
+import type { DagStage, StageContext } from "../types";
 
-export const assetLoad: Stage = {
+export const assetLoad: DagStage = {
   name: "asset-load",
+  requires: [],
+  provides: ["model.assets"],
   process(ctx: StageContext): void {
     const dir = ctx.config.templateDir;
 

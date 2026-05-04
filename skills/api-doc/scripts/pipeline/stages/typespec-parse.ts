@@ -35,12 +35,14 @@ import type {
   ApiProperty,
   ApiConstraints,
   VersionTag,
-  Stage,
+  DagStage,
   StageContext,
 } from "../types";
 
-export const typespecParse: Stage = {
+export const typespecParse: DagStage = {
   name: "typespec-parse",
+  requires: [],
+  provides: ["doc.api", "model.meta"],
   async process(ctx: StageContext): Promise<void> {
     const inputDir = resolve(ctx.config.inputDir);
     const doc = await parseTypeSpecDir(inputDir);

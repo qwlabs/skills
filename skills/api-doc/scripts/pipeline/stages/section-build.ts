@@ -1,9 +1,11 @@
 // pipeline/stages/section-build.ts
-import type { Stage, StageContext, ContentSection } from "../types";
+import type { DagStage, StageContext, ContentSection } from "../types";
 import { slugify } from "../emit/html-helpers";
 
-export const sectionBuild: Stage = {
+export const sectionBuild: DagStage = {
   name: "section-build",
+  requires: ["doc.api", "doc.snippets", "doc.curl"],
+  provides: ["model.sections"],
   process(ctx: StageContext): void {
     const sections: ContentSection[] = [];
 
