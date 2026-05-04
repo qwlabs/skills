@@ -165,7 +165,7 @@ function generateOperationSection(op: ApiOperation): string {
     html +=
       '<div class="section"><div class="section-title">请求参数</div>\n';
     html +=
-      '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>位置</th><th>说明</th><th>必填</th><th>约束</th></tr></thead><tbody>\n';
+      '<table class="param-table cols-6"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-location">位置</th><th class="col-desc">说明</th><th class="col-required">必填</th><th class="col-constraint">约束</th></tr></thead><tbody>\n';
     for (const param of op.parameters) {
       html += generateParameterRow(param);
     }
@@ -176,7 +176,7 @@ function generateOperationSection(op: ApiOperation): string {
   if (op.body && op.body.type.kind === "object") {
     html += '<div class="section"><div class="section-title">请求参数</div>\n';
     html +=
-      '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>约束</th><th>说明</th></tr></thead><tbody>\n';
+      '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
     html += generatePropertyRows(op.body.type.properties, 0);
     html += "</tbody></table></div>";
   }
@@ -187,7 +187,7 @@ function generateOperationSection(op: ApiOperation): string {
       html +=
         '<div class="section"><div class="section-title">返回参数</div>\n';
       html +=
-        '<table class="param-table"><thead><tr><th>字段名</th><th>类型</th><th>约束</th><th>说明</th></tr></thead><tbody>\n';
+        '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
       html += generatePropertyRows(resp.type.properties, 0);
       html += "</tbody></table></div>";
       break;

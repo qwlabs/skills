@@ -39,9 +39,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
 .list li::before{content:'•';position:absolute;left:0;color:var(--doc-accent);font-weight:bold}
 .json-section{padding:20px 25px}
 .json-title{font-size:15px;font-weight:600;color:var(--doc-title-from);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--doc-accent);display:inline-block}
-.param-table,.md-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
-.param-table th,.md-table th{background:var(--doc-table-header-bg);padding:10px 14px;text-align:left;font-weight:600;color:var(--doc-text-primary);border:1px solid var(--doc-border-strong);white-space:nowrap}
-.param-table td,.md-table td{padding:10px 14px;border:1px solid var(--doc-border-strong);color:var(--doc-text-secondary);vertical-align:top}
+.param-table,.md-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;table-layout:fixed}
+.param-table th,.md-table th{background:var(--doc-table-header-bg);padding:10px 14px;text-align:left;font-weight:600;color:var(--doc-text-primary);border:1px solid var(--doc-border-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.param-table td,.md-table td{padding:10px 14px;border:1px solid var(--doc-border-strong);color:var(--doc-text-secondary);vertical-align:top;overflow:hidden}
+/* 请求参数 (6列): 字段名/类型/位置/说明/必填/约束 */
+.cols-6 .col-field{width:18%}
+.cols-6 .col-type{width:12%}
+.cols-6 .col-location{width:8%}
+.cols-6 .col-desc{width:32%}
+.cols-6 .col-required{width:10%}
+.cols-6 .col-constraint{width:20%}
+/* 请求体/返回参数 (4列): 字段名/类型/约束/说明 */
+.cols-4 .col-field{width:20%}
+.cols-4 .col-type{width:12%}
+.cols-4 .col-constraint{width:25%}
+.cols-4 .col-desc{width:43%}
+/* 说明列、约束列允许文字折行，其余列尽量不折行 */
+.col-desc,.col-constraint{white-space:normal;word-break:break-all}
 .param-table tr:hover td,.md-table tr:hover td{background:var(--doc-table-hover-bg)}
 .field-name-cell{padding-left:15px !important}
 .field-name-cell.field-indent-1{padding-left:35px !important}
