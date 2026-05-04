@@ -61,7 +61,8 @@ ApiParameter    // 参数：name, type, location, doc, example, required, defaul
 ApiBody         // 请求体：type, contentType, doc
 ApiResponse     // 响应：statusCode, type?, description, isError
 ApiType         // 类型系统：string | number | boolean | integer | float | datetime | uuid | enum | union | array | object | scalar | any
-ApiProperty     // 对象属性：name, type, doc, example, required, defaultValue, fixedValue, conditionalRequired, constraints, versionTags
+                 // enum.members[].doc: 成员 @doc 说明，渲染到说明列
+ApiProperty     // 对象属性：name, type, doc, example, required, defaultValue, fixedValue, conditionalRequired, conditionalOptional, constraints, versionTags
 ApiConstraints  // 约束：minimum, maximum, minLength, maxLength, pattern
 VersionTag      // 版本标签：type ("added" | "removed"), version
 ApiExample      // 示例：name, request?, response, curlCommand?
@@ -121,7 +122,8 @@ MarkdownSnippet // 片段：name, content
 8. `resolveScalarBase()` — Scalar 基础类型映射（int32/int64 → integer, float/double → float, datetime → datetime, uuid → uuid）
 9. `extractDocExamples()` — 从 `@opExample` 提取示例数据，包含 EnumMember/EnumValue 深拷贝处理（`deepCloneValue()`）
 10. `extractRequiredIf()` — 从 AST 节点提取 `@requiredIf` 条件必填说明（非标准 TypeSpec decorator，通过 AST 解析）
-11. `collectInheritedProperties()` — 按 base chain 收集继承属性，子类属性覆盖父类
+11. `extractOptionalIf()` — 从 AST 节点提取 `@optionalIf` 条件选填说明（同上）
+12. `collectInheritedProperties()` — 按 base chain 收集继承属性，子类属性覆盖父类
 12. `getExampleValue()` — 从 `@example` decorator 提取示例值
 
 ### cURL 生成（curl-pipeline.ts）

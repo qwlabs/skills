@@ -377,11 +377,12 @@ function resolveType(program: Program, type: Type): ApiType {
       return { kind: "object", name: type.name, properties };
     }
     case "Enum": {
-      const members: { name: string; value?: string | number }[] = [];
+      const members: { name: string; value?: string | number; doc?: string }[] = [];
       for (const [memberName, member] of type.members) {
         members.push({
           name: memberName,
           value: member.value as string | number | undefined,
+          doc: getDoc(program, member) || undefined,
         });
       }
       return { kind: "enum", name: type.name, members };

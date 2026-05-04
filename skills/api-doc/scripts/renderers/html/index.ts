@@ -222,13 +222,14 @@ function generateParameterRow(param: ApiParameter): string {
     ? '<span class="field-required">必填</span>'
     : '<span class="field-optional">选填</span>';
   const constraints = formatConstraints(param.constraints);
+  const docHtml = escapeHtml(param.doc || "") + formatEnumDoc(param.type);
 
   return (
     `<tr>` +
     `<td class="field-name-cell"><code class="field-name">${escapeHtml(param.name)}</code></td>` +
     `<td><span class="field-type">${escapeHtml(typeDisplay)}</span></td>` +
     `<td>${escapeHtml(param.location)}</td>` +
-    `<td>${escapeHtml(param.doc || "")}</td>` +
+    `<td>${docHtml}</td>` +
     `<td>${requiredBadge}</td>` +
     `<td>${escapeHtml(constraints)}</td>` +
     `</tr>\n`
@@ -251,12 +252,14 @@ function generatePropertyRows(properties: ApiProperty[], level: number): string 
       versionHtml += ` ${render("badge", label)}`;
     }
 
+    const docHtml = escapeHtml(prop.doc || "") + formatEnumDoc(prop.type);
+
     html +=
       `<tr>` +
       `<td class="field-name-cell ${indentClass}"><code class="field-name">${escapeHtml(prop.name)}</code>${versionHtml}</td>` +
       `<td><span class="field-type">${escapeHtml(typeDisplay)}</span></td>` +
       `<td class="constraint-cell">${constraintHtml}</td>` +
-      `<td>${escapeHtml(prop.doc || "")}</td>` +
+      `<td>${docHtml}</td>` +
       `</tr>\n`;
 
     if (prop.type.kind === "object") {
@@ -291,7 +294,7 @@ function formatType(type: ApiType): string {
     case "any":
       return "any";
     case "enum":
-      return `enum (${type.members.map((m) => m.name).join(", ")})`;
+      return "enum";
     case "union":
       return type.variants.map(formatType).join(" | ");
     case "array":
@@ -301,6 +304,18 @@ function formatType(type: ApiType): string {
     case "scalar":
       return type.name;
   }
+}
+
+function formatEnumDoc(type: ApiType): string {
+  if (type.kind !== "enum" || type.members.length === 0) return "";
+  const hasAnyDoc = type.members.some((m) => m.doc);
+  if (!hasAnyDoc) {
+    return `<br><span class="enum-members">${escapeHtml(type.members.map((m) => m.name).join(", "))}</span>`;
+  }
+  const items = type.members.map((m) =>
+    m.doc ? `${escapeHtml(m.name)}(${escapeHtml(m.doc)})` : escapeHtml(m.name)
+  );
+  return `<br><span class="enum-members">${items.join("、")}</span>`;
 }
 
 function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValue?: unknown, fixedValue?: unknown, conditionalRequired?: string, conditionalOptional?: string): string {

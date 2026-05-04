@@ -109,6 +109,7 @@ namespace TMS;
 | `@pattern("...")` | 正则约束 | `@pattern("^[A-Z]")` |
 | `@added("v2")` / `@removed("v3")` | 版本标签，渲染为徽章 | `@added("2.0")` |
 | `@requiredIf("...")` | 条件必填说明，渲染为标签 | `@requiredIf("当 email 存在时必填")` |
+| `@optionalIf("...")` | 条件选填说明，渲染为标签 | `@optionalIf("当使用默认配置时选填")` |
 
 ## 添加示例（@opExample）
 
@@ -168,9 +169,11 @@ model ListResponse {
 ## 枚举与联合类型
 
 ```typespec
-// 枚举：渲染为 enum (YES, NO)
+// 枚举：类型列显示 "enum"，说明列列出各成员含义
 enum YesNo {
+  @doc("是")
   YES,
+  @doc("否")
   NO,
 }
 
@@ -179,6 +182,8 @@ model Status {
   code: 200 | 404 | 500;
 }
 ```
+
+枚举成员上的 `@doc` 会自动渲染到说明列，格式为 `YES(是)、NO(否)`；无 `@doc` 时只显示成员名称。
 
 ## 固定值字段
 
@@ -191,9 +196,9 @@ model Request {
 }
 ```
 
-## 条件必填字段
+## 条件必填 / 条件选填字段
 
-使用 `@requiredIf` 标记在某些条件下必填的字段：
+使用 `@requiredIf` 标记在某些条件下必填的字段，使用 `@optionalIf` 标记在某些条件下选填的字段：
 
 ```typespec
 model PaymentRequest {
@@ -207,12 +212,17 @@ model PaymentRequest {
   @doc("邮箱验证状态")
   @requiredIf("当 email 存在时必填")
   emailVerified?: boolean;
+
+  @doc("备注")
+  @optionalIf("当使用默认配置时选填")
+  remark: string;
 }
 ```
 
 渲染效果：
-- 有 `@requiredIf` 的字段显示 `条件必填` 标签 + 条件描述（与 `必填`/`选填`/`固定值` 互斥，只显示一种）
-- 支持两种场景：值依赖（某字段为特定值时必填）和存在依赖（某字段存在时必填）
+- `@requiredIf` — 显示 `条件必填` 标签 + 条件描述
+- `@optionalIf` — 显示 `条件选填` 标签 + 条件描述
+- 与 `必填`/`选填`/`固定值` 互斥，只显示一种
 
 ## Markdown 片段
 

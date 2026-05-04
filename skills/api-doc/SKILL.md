@@ -17,6 +17,8 @@ description: >
 - 参数表格（类型、约束、必填状态）
 - 版本标签（`@added` / `@removed`）
 - 条件必填字段（`@requiredIf`）
+- 条件选填字段（`@optionalIf`）
+- 枚举成员说明（enum `@doc` 自动渲染）
 - 交互式请求/响应示例（`@opExample`）
 - Markdown 片段注入（header / footer）
 - 语法高亮（highlight.js）

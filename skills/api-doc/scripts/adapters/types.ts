@@ -81,7 +81,7 @@ export type ApiType =
   | { kind: "datetime" }
   | { kind: "uuid" }
   | { kind: "any" }
-  | { kind: "enum"; name?: string; members: { name: string; value?: string | number }[] }
+  | { kind: "enum"; name?: string; members: { name: string; value?: string | number; doc?: string }[] }
   | { kind: "union"; variants: ApiType[] }
   | { kind: "array"; elementType: ApiType }
   | { kind: "object"; name?: string; properties: ApiProperty[] }
