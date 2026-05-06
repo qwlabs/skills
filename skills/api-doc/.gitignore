@@ -1,3 +1,4 @@
+.tmp-parse
 node_modules
 output.html
 output-*.html
