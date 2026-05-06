@@ -24,21 +24,13 @@ description: >
 - 语法高亮（highlight.js）
 - 主题支持（内置 light 主题，支持自定义 CSS）
 
-## 安装
-
-**必须使用 bun，禁止使用 npm。**
-
-```bash
-bun install
-```
-
-验证安装：
-
-```bash
-bun run scripts/index.ts --help
-```
-
 ## 使用
+
+**必须使用 bun，禁止使用 npm。** 执行前先确认依赖已安装：
+
+```bash
+test -d node_modules || bun install
+```
 
 ```bash
 bun run scripts/index.ts <input-dir> [output] [--theme <name>] [--theme-file <path>]
