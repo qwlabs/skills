@@ -32,8 +32,6 @@ description: >
 bun install
 ```
 
-依赖：`@typespec/compiler`、`@typespec/http`（已配置 npmmirror 源）。
-
 验证安装：
 
 ```bash

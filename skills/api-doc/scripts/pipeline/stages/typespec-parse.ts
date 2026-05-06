@@ -24,7 +24,7 @@ import type {
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
-import { existsSync, readdirSync, readFileSync, mkdirSync, rmSync, cpSync } from "fs";
+import { existsSync, readdirSync, readFileSync, mkdirSync, cpSync, rmSync } from "fs";
 import type {
   ParsedApiDoc,
   ApiGroup,
@@ -65,14 +65,21 @@ const SKILL_ROOT = resolve(__dirname, "../../..");
 
 async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const mainFile = findMainFile(inputDir);
-  // 将输入目录复制到 skill 临时目录编译，使 node_modules 解析生效
-  const tmpDir = join(SKILL_ROOT, ".tmp-parse", Date.now().toString());
-  const tmpInput = join(tmpDir, "src");
-  mkdirSync(tmpInput, { recursive: true });
-  cpSync(inputDir, tmpInput, { recursive: true });
+  const linkPath = join(inputDir, "node_modules");
+  const targetPath = join(SKILL_ROOT, "node_modules");
+  let createdLink = false;
+  if (!existsSync(linkPath)) {
+    mkdirSync(linkPath, { recursive: true });
+    for (const entry of readdirSync(targetPath)) {
+      cpSync(join(targetPath, entry), join(linkPath, entry), { recursive: true });
+    }
+    createdLink = true;
+  }
   try {
-    const tmpMain = join(tmpInput, mainFile.slice(inputDir.length + 1));
-    const program = await compile(NodeHost, tmpMain, { noEmit: true });
+    const program = await compile(NodeHost, mainFile, {
+      noEmit: true,
+    });
+
     const errors = program.diagnostics.filter(
       (d) => d.severity === "error" && d.code !== "invalid-ref"
     );
@@ -82,36 +89,38 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     }
 
     const [services, diags] = getAllHttpServices(program);
-    if (diags.length > 0) {
-      for (const d of diags) {
-        console.warn(`Warning: ${String(d.message)}`);
-      }
+  if (diags.length > 0) {
+    for (const d of diags) {
+      console.warn(`Warning: ${String(d.message)}`);
     }
+  }
 
-    const service = services[0];
-    if (!service) {
-      throw new Error("No HTTP service found in TypeSpec files");
+  const service = services[0];
+  if (!service) {
+    throw new Error("No HTTP service found in TypeSpec files");
+  }
+
+  const serviceNs = service.namespace;
+  const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
+  const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
+
+  const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
+  const operationMap = groupOperationsByFile(service.operations, opSourceFile);
+
+  const groups: ApiGroup[] = [];
+  for (const [groupName, httpOps] of operationMap) {
+    const ops: ApiOperationType[] = [];
+    for (const httpOp of httpOps) {
+      ops.push(extractOperation(program, httpOp, groupName, inputDir));
     }
+    groups.push({ name: groupName, operations: ops });
+  }
 
-    const serviceNs = service.namespace;
-    const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
-    const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
-
-    const opSourceFile = buildOpSourceFile(program, service.operations, tmpInput);
-    const operationMap = groupOperationsByFile(service.operations, opSourceFile);
-
-    const groups: ApiGroup[] = [];
-    for (const [groupName, httpOps] of operationMap) {
-      const ops: ApiOperationType[] = [];
-      for (const httpOp of httpOps) {
-        ops.push(extractOperation(program, httpOp, groupName, tmpInput));
-      }
-      groups.push({ name: groupName, operations: ops });
-    }
-
-    return { title, version, groups, headerSnippets: [], footerSnippets: [] };
+  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
   } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
+    if (createdLink) {
+      try { rmSync(linkPath, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
   }
 }
 
