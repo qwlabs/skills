@@ -1,7 +1,7 @@
 // pipeline/stages/typespec-parse.ts
 // TypeSpec 解析 Stage — 编译 .tsp 文件并填充 ctx.doc
 
-import { join, resolve } from "path";
+import { join, resolve, dirname } from "path";
 import {
   compile,
   NodeHost,
@@ -23,7 +23,7 @@ import type {
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
-import { existsSync, readdirSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync, symlinkSync, unlinkSync } from "fs";
 import type {
   ParsedApiDoc,
   ApiGroup,
@@ -45,7 +45,7 @@ export const typespecParse: DagStage = {
   provides: ["doc.api", "model.meta"],
   async process(ctx: StageContext): Promise<void> {
     const inputDir = resolve(ctx.config.inputDir);
-    const doc = await parseTypeSpecDir(inputDir);
+    const doc = await parseTypeSpecDir(inputDir, ctx.config.skillDir);
 
     ctx.doc.title = doc.title;
     ctx.doc.version = doc.version;
@@ -59,49 +59,69 @@ export const typespecParse: DagStage = {
   },
 };
 
-async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
+async function parseTypeSpecDir(inputDir: string, skillDir: string): Promise<ParsedApiDoc> {
   const mainFile = findMainFile(inputDir);
-  const program = await compile(NodeHost, mainFile, {
-    noEmit: true,
-  });
 
-  const errors = program.diagnostics.filter(
-    (d) => d.severity === "error" && d.code !== "invalid-ref"
-  );
-  if (errors.length > 0) {
-    const msgs = errors.map((d) => String(d.message)).join("\n");
-    throw new Error(`TypeSpec compilation failed:\n${msgs}`);
+  // TypeSpec 的模块解析从 mainFile 所在目录向上查找 node_modules，
+  // 但外部项目的 inputDir 没有 @typespec 依赖。
+  // 创建临时 symlink 让 inputDir 能找到 api-doc skill 的 node_modules。
+  const inputParent = dirname(inputDir);
+  const skillNodeModules = join(skillDir, "node_modules");
+  const linkPath = join(inputParent, "node_modules");
+
+  let symlinkCreated = false;
+  if (!existsSync(linkPath)) {
+    symlinkSync(skillNodeModules, linkPath, "junction");
+    symlinkCreated = true;
   }
 
-  const [services, diags] = getAllHttpServices(program);
-  if (diags.length > 0) {
-    for (const d of diags) {
-      console.warn(`Warning: ${String(d.message)}`);
+  try {
+    const program = await compile(NodeHost, mainFile, {
+      noEmit: true,
+    });
+
+    const errors = program.diagnostics.filter(
+      (d) => d.severity === "error" && d.code !== "invalid-ref"
+    );
+    if (errors.length > 0) {
+      const msgs = errors.map((d) => String(d.message)).join("\n");
+      throw new Error(`TypeSpec compilation failed:\n${msgs}`);
+    }
+
+    const [services, diags] = getAllHttpServices(program);
+    if (diags.length > 0) {
+      for (const d of diags) {
+        console.warn(`Warning: ${String(d.message)}`);
+      }
+    }
+
+    const service = services[0];
+    if (!service) {
+      throw new Error("No HTTP service found in TypeSpec files");
+    }
+
+    const serviceNs = service.namespace;
+    const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
+    const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
+
+    const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
+    const operationMap = groupOperationsByFile(service.operations, opSourceFile);
+
+    const groups: ApiGroup[] = [];
+    for (const [groupName, httpOps] of operationMap) {
+      const ops: ApiOperationType[] = [];
+      for (const httpOp of httpOps) {
+        ops.push(extractOperation(program, httpOp, groupName, inputDir));
+      }
+      groups.push({ name: groupName, operations: ops });
+    }
+
+    return { title, version, groups, headerSnippets: [], footerSnippets: [] };
+  } finally {
+    if (symlinkCreated) {
+      try { unlinkSync(linkPath); } catch { /* ignore */ }
     }
   }
-
-  const service = services[0];
-  if (!service) {
-    throw new Error("No HTTP service found in TypeSpec files");
-  }
-
-  const serviceNs = service.namespace;
-  const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
-  const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
-
-  const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
-  const operationMap = groupOperationsByFile(service.operations, opSourceFile);
-
-  const groups: ApiGroup[] = [];
-  for (const [groupName, httpOps] of operationMap) {
-    const ops: ApiOperationType[] = [];
-    for (const httpOp of httpOps) {
-      ops.push(extractOperation(program, httpOp, groupName, inputDir));
-    }
-    groups.push({ name: groupName, operations: ops });
-  }
-
-  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
 }
 
 function findMainFile(inputDir: string): string {

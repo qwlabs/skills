@@ -13,6 +13,7 @@ import { htmlEmit } from "./pipeline/emit/html-emit";
 import type { DagStage } from "./pipeline/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const skillDir = resolve(__dirname, "..");
 
 const stages: DagStage[] = [typespecParse, snippetInject, curlGenerate, sidebarBuild, sectionBuild, assetLoad, htmlEmit];
 
@@ -89,7 +90,7 @@ async function main() {
   const templateDir = join(__dirname, "templates");
   const themeCSS = resolveTheme(themeName, themeFile, templateDir);
 
-  const model = await runPipeline(stages, { inputDir, templateDir, themeCSS, version: "" });
+  const model = await runPipeline(stages, { inputDir, templateDir, skillDir, themeCSS, version: "" });
 
   const revision = buildRevision(model.meta.version);
 

@@ -171,6 +171,7 @@ export interface StageContext {
 export interface StageConfig {
   inputDir: string;
   templateDir: string;
+  skillDir: string;
   themeCSS?: string;
   version: string;
 }
