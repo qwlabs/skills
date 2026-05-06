@@ -29,7 +29,6 @@ description: >
 **必须使用 bun，禁止使用 npm。**
 
 ```bash
-cd skills/api-doc
 bun install
 ```
 
