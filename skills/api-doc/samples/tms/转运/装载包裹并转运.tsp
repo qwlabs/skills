@@ -32,6 +32,7 @@ model PostTransportRequest extends HualeiRequest {
     message: "Server Error"
   }
 }, #{title: "平台错误"})
+#deprecated "请使用 分页查询站点信息 接口"
 op hy_tms_post_transport_WebApi(
   @body body: PostTransportRequest
 ): HualeiResponse<Task>;

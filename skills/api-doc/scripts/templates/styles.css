@@ -105,3 +105,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
 .example-card-body:hover .example-copy-btn{opacity:1}
 .example-copy-btn:hover{background:var(--doc-code-btn-hover)}
 @media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:20px}}
+/* ===== 废弃标记 ===== */
+.deprecated-banner{background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px 16px;margin:12px 25px 0;display:flex;align-items:flex-start;gap:10px;color:#92400e;font-size:14px}
+.deprecated-banner-icon{font-size:18px;line-height:1;flex-shrink:0}
+.deprecated-banner-content{flex:1}
+.deprecated-banner-title{font-weight:700;margin-bottom:2px}
+.deprecated-banner-message{color:#78350f}
+.deprecated-section{border-left:3px solid #f59e0b}
+.deprecated-section .api-title{opacity:.7;text-decoration:line-through;text-decoration-color:rgba(255,255,255,.5)}
+.toc-link-deprecated{color:var(--doc-text-muted)!important;text-decoration:line-through!important}
+.toc-link-deprecated .deprecated-inline-badge{display:inline-block;background:#f59e0b;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;line-height:1.4}

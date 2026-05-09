@@ -23,6 +23,10 @@ export interface ApiGroup {
   operations: ApiOperation[];
 }
 
+export interface DeprecationDetails {
+  message: string;
+}
+
 export interface ApiOperation {
   id: string;
   name: string;
@@ -35,6 +39,7 @@ export interface ApiOperation {
   versionTags: VersionTag[];
   curlCommand?: string;
   examples: ApiExample[];
+  deprecated?: DeprecationDetails;
 }
 
 export interface ApiExample {
@@ -123,6 +128,7 @@ export interface SidebarEntry {
   kind: "group-title" | "operation-link" | "snippet-link";
   label: string;
   anchorId?: string;
+  deprecated?: DeprecationDetails;
 }
 
 export type ContentSection =

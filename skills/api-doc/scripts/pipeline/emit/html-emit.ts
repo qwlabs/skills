@@ -42,7 +42,11 @@ function renderSidebar(entries: SidebarEntry[]): string {
         html += `<li class="toc-group"><div class="toc-group-title">${escapeHtml(entry.label)}</div></li>\n`;
         break;
       case "operation-link":
-        html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link">${escapeHtml(entry.label)}</a></li>\n`;
+        if (entry.deprecated) {
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link toc-link-deprecated">${escapeHtml(entry.label)}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
+        } else {
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link">${escapeHtml(entry.label)}</a></li>\n`;
+        }
         break;
       case "snippet-link":
         html += `<li class="toc-group"><a href="#${entry.anchorId}" class="toc-group-title">${escapeHtml(entry.label)}</a></li>\n`;
@@ -73,8 +77,13 @@ function renderSections(sections: ContentSection[]): string {
 function renderOperation(op: ApiOperation): string {
   let html = "";
 
-  html += `<section class="api-section" id="${op.id}">\n`;
+  const sectionClass = op.deprecated ? "api-section deprecated-section" : "api-section";
+  html += `<section class="${sectionClass}" id="${op.id}">\n`;
   html += `<div class="api-title">${escapeHtml(op.name)}</div>\n`;
+
+  if (op.deprecated) {
+    html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此接口已废弃</div><div class="deprecated-banner-message">${escapeHtml(op.deprecated.message)}</div></div></div>\n`;
+  }
 
   // Metadata: verb + path
   html += '<div class="meta-section">\n';

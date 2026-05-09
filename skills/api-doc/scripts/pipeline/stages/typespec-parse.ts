@@ -13,6 +13,7 @@ import {
   getMaxLength,
   getPattern,
   isTemplateDeclaration,
+  getDeprecationDetails,
 } from "@typespec/compiler";
 import type {
   Program,
@@ -305,6 +306,7 @@ function extractOperation(
 
   const versionTags = extractVersionTags(op);
   const examples = extractDocExamples(op);
+  const deprecation = getDeprecationDetails(program, op) ?? undefined;
 
   return {
     id,
@@ -317,6 +319,7 @@ function extractOperation(
     responses,
     versionTags,
     examples,
+    deprecated: deprecation,
   };
 }
 

@@ -16,7 +16,7 @@ export const sidebarBuild: DagStage = {
     for (const group of ctx.doc.groups) {
       entries.push({ kind: "group-title", label: group.name });
       for (const op of group.operations) {
-        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id });
+        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, deprecated: op.deprecated });
       }
     }
 
