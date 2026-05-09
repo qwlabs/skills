@@ -26,7 +26,7 @@ export function generateParameterRow(param: ApiParameter): string {
 export function generatePropertyRows(properties: ApiProperty[], level: number): string {
   let html = "";
   for (const prop of properties) {
-    const indentClass = "field-indent-" + Math.min(level, 4);
+    const indentClass = "field-indent-" + Math.min(level, 10);
     const typeDisplay = formatType(prop.type);
 
     const constraintHtml = formatConstraintsHtml(prop.required, prop.constraints, prop.defaultValue, prop.fixedValue, prop.conditionalRequired, prop.conditionalOptional);
@@ -73,7 +73,8 @@ function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValu
   } else if (required) {
     lines.push('<span class="constraint-tag constraint-required">必填</span>');
   } else {
-    lines.push('<span class="constraint-tag constraint-optional">选填</span>');
+    const defaultPart = defaultValue !== undefined ? ` <span class="constraint-item">默认 <code>${escapeHtml(String(defaultValue))}</code></span>` : "";
+    lines.push(`<span class="constraint-tag constraint-optional">选填</span>${defaultPart}`);
   }
 
   const cAny = c as Record<string, unknown>;
@@ -92,10 +93,6 @@ function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValu
 
   if (cAny.pattern !== undefined) {
     lines.push(`<span class="constraint-item">格式 /${cAny.pattern}/</span>`);
-  }
-
-  if (fixedValue === undefined && defaultValue !== undefined) {
-    lines.push(`<span class="constraint-item">默认 <code>${escapeHtml(String(defaultValue))}</code></span>`);
   }
 
   return lines.join("<br>");

@@ -75,6 +75,11 @@ enum ExecutionStatus {
   TIMEOUT,
 }
 
+model Layout {
+  @doc("布局元素")
+  items: Record<any>;
+}
+
 model Payload {
   @doc("包裹编码")
   code: string;
@@ -82,6 +87,10 @@ model Payload {
   lot?: string;
   @doc("包裹分割号,建议格式示例: 2/3")
   splitCode?: string;
+  @doc("包裹布局")
+  layout?: Layout;
+  @doc("包裹清单")
+  items?: string[];
 }
 
 model Task {
@@ -108,4 +117,7 @@ model Station {
   @doc("容器")
   @requiredIf("hasContainer=YES")
   container?: string;
+  @doc("包裹信息")
+  @optionalIf("hasPayload=YES")
+  payload?: Payload;
 }
