@@ -86,8 +86,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
 .example-section{padding:20px 25px;border-bottom:1px solid var(--doc-border)}
 .example-section-title{font-size:15px;font-weight:600;color:var(--doc-title-from);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .example-section-title::before{content:'';width:3px;height:16px;background:var(--doc-accent);border-radius:2px}
-.example-tabs{display:flex;gap:0;border-bottom:2px solid var(--doc-border);margin-bottom:16px}
-.example-tab{padding:8px 18px;font-size:13px;font-weight:500;color:var(--doc-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.example-tabs{display:flex;gap:0;border-bottom:2px solid var(--doc-border);margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.example-tab{padding:8px 18px;font-size:13px;font-weight:500;color:var(--doc-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;flex-shrink:0;white-space:nowrap}
 .example-tab:hover{color:var(--doc-text-primary)}
 .example-tab.active{color:var(--doc-accent);border-bottom-color:var(--doc-accent);font-weight:600}
 .example-pane{display:none}
