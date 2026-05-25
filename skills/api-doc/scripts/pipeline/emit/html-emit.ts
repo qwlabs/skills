@@ -2,7 +2,7 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { render } from "./loader";
-import type { DagStage, StageContext, SidebarEntry, ContentSection } from "../types";
+import type { DagStage, StageContext, SidebarEntry, ContentSection, ProtocolKind } from "../types";
 import type { ApiOperation } from "../types";
 import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge } from "./html-helpers";
 import { generateParameterRow, generatePropertyRows } from "./html-props";
@@ -41,22 +41,13 @@ function renderSidebar(entries: SidebarEntry[]): string {
       case "group-title":
         html += `<li class="toc-group"><div class="toc-group-title">${escapeHtml(entry.label)}</div></li>\n`;
         break;
-      case "operation-link": {
-        const tagHtml = entry.tag ? `<span class="toc-tag toc-tag-http">${escapeHtml(entry.tag)}</span>` : "";
-        if (entry.deprecated) {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link toc-link-deprecated">${escapeHtml(entry.label)}${tagHtml}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
-        } else {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link">${escapeHtml(entry.label)}${tagHtml}</a></li>\n`;
-        }
-        break;
-      }
-      case "message-link": {
-        const tagHtml = entry.tag ? `<span class="toc-tag toc-tag-mq">${escapeHtml(entry.tag)}</span>` : "";
-        if (entry.deprecated) {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link toc-message-link-deprecated">${escapeHtml(entry.label)}${tagHtml}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
-        } else {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link">${escapeHtml(entry.label)}${tagHtml}</a></li>\n`;
-        }
+      case "doc-link": {
+        const tagClass = `toc-tag-${entry.protocol}`;
+        const tagLabel = entry.protocol === "http" ? "HTTP" : "MQ";
+        const tagHtml = `<span class="toc-tag ${tagClass}">${tagLabel}</span>`;
+        const linkClass = entry.deprecated ? "toc-link deprecated" : "toc-link";
+        const badge = entry.deprecated ? '<span class="deprecated-inline-badge">已废弃</span>' : "";
+        html += `<li class="toc-item"><a href="#${entry.anchorId}" class="${linkClass}">${escapeHtml(entry.label)}${tagHtml}${badge}</a></li>\n`;
         break;
       }
       case "snippet-link":
