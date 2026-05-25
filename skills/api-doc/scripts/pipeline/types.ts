@@ -127,6 +127,10 @@ export interface VersionTag {
   version: string;
 }
 
+// --- Protocol Kind ---
+
+export type ProtocolKind = "http" | "mq";
+
 // --- Document Model ---
 
 export interface DocumentModel {
@@ -137,10 +141,10 @@ export interface DocumentModel {
 }
 
 export interface SidebarEntry {
-  kind: "group-title" | "operation-link" | "snippet-link" | "message-link";
+  kind: "group-title" | "doc-link" | "snippet-link";
   label: string;
   anchorId?: string;
-  tag?: string;
+  protocol: ProtocolKind;
   deprecated?: DeprecationDetails;
 }
 

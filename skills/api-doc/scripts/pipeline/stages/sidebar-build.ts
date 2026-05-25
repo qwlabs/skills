@@ -15,10 +15,10 @@ export const sidebarBuild: DagStage = {
     for (const group of ctx.doc.groups) {
       entries.push({ kind: "group-title", label: group.name });
       for (const op of group.operations) {
-        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, tag: "HTTP", deprecated: op.deprecated });
+        entries.push({ kind: "doc-link", label: op.name, anchorId: op.id, protocol: "http", deprecated: op.deprecated });
       }
       for (const msg of group.messages) {
-        entries.push({ kind: "message-link", label: msg.name, anchorId: msg.id, tag: "MQ", deprecated: msg.deprecated });
+        entries.push({ kind: "doc-link", label: msg.name, anchorId: msg.id, protocol: "mq", deprecated: msg.deprecated });
       }
     }
 
