@@ -78,7 +78,7 @@ function renderSections(sections: ContentSection[]): string {
         html += renderOperation(section.op);
         break;
       case "message":
-        html += renderMessage(section.msg, section.topic);
+        html += renderMessage(section.msg);
         break;
       case "footer":
         html += buildFooterBadge(section.version);
@@ -91,7 +91,7 @@ function renderSections(sections: ContentSection[]): string {
 function renderOperation(op: ApiOperation): string {
   let html = "";
 
-  const sectionClass = op.deprecated ? "api-section deprecated-section" : "api-section";
+  const sectionClass = "api-section";
   html += `<section class="${sectionClass}" id="${op.id}">\n`;
   html += `<div class="api-title">${escapeHtml(op.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-${op.verb.toLowerCase()})">${op.verb.toUpperCase()}</span></div>\n`;
 
@@ -170,10 +170,10 @@ function renderOperation(op: ApiOperation): string {
   return html;
 }
 
-function renderMessage(msg: import("../types").MessageDefinition, topic: string): string {
+function renderMessage(msg: import("../types").MessageDefinition): string {
   let html = "";
 
-  const sectionClass = msg.deprecated ? "message-section deprecated-section" : "message-section";
+  const sectionClass = "message-section";
   html += `<section class="${sectionClass}" id="${msg.id}">\n`;
   html += `<div class="api-title">${escapeHtml(msg.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-mq)">MQ</span></div>\n`;
 
@@ -181,11 +181,9 @@ function renderMessage(msg: import("../types").MessageDefinition, topic: string)
     html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此消息已废弃</div><div class="deprecated-banner-message">${escapeHtml(msg.deprecated.message)}</div></div></div>\n`;
   }
 
-  // Metadata: MQ tag + Topic + Event Name
+  // Metadata: only Topic (no Type, no Event)
   html += '<div class="meta-section">\n';
-  html += `<div class="meta-block"><span class="meta-label">类型</span><span class="meta-value">${render("tag", "MQ")}</span></div>\n`;
-  html += `<div class="meta-block meta-block-mq-topic"><span class="meta-label">Topic</span><span class="meta-value">${render("code", topic)}</span></div>\n`;
-  html += `<div class="meta-block"><span class="meta-label">Event</span><span class="meta-value">${render("code", msg.eventName)}</span></div>\n`;
+  html += `<div class="meta-block meta-block-mq-topic"><span class="meta-label">Topic</span><span class="meta-value">${render("code", msg.topic)}</span></div>\n`;
   if (msg.versionTags.length > 0) {
     for (const vt of msg.versionTags) {
       const label = vt.type === "added" ? `Added in ${vt.version}` : `Removed in ${vt.version}`;
@@ -194,12 +192,10 @@ function renderMessage(msg: import("../types").MessageDefinition, topic: string)
   }
   html += "</div>\n";
 
-  // Description (skip if same as name to avoid duplication)
   if (msg.description && msg.description !== msg.name) {
     html += `<div class="markdown-section">${simpleMarkdownToHtml(msg.description)}</div>\n`;
   }
 
-  // Payload properties
   if (msg.payload && msg.payload.kind === "object") {
     html += '<div class="section"><div class="section-title">消息结构</div>\n';
     html +=
@@ -208,7 +204,6 @@ function renderMessage(msg: import("../types").MessageDefinition, topic: string)
     html += "</tbody></table></div>";
   }
 
-  // Examples
   if (msg.examples.length > 0) {
     html += generateExampleSection(msg.id, msg.examples);
   }

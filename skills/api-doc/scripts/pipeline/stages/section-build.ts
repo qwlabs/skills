@@ -1,4 +1,3 @@
-// pipeline/stages/section-build.ts
 import type { DagStage, StageContext, ContentSection } from "../types";
 import { slugify } from "../emit/html-helpers";
 
@@ -17,11 +16,8 @@ export const sectionBuild: DagStage = {
       for (const op of group.operations) {
         sections.push({ kind: "operation", op });
       }
-    }
-
-    for (const msgGroup of ctx.doc.messageGroups) {
-      for (const msg of msgGroup.messages) {
-        sections.push({ kind: "message", msg, topic: msgGroup.topic });
+      for (const msg of group.messages) {
+        sections.push({ kind: "message", msg });
       }
     }
 

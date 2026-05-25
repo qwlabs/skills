@@ -125,7 +125,7 @@ ApiProperty     // 对象属性：name, type, doc, example, required, defaultVal
 ApiConstraints  // 约束：minimum, maximum, minLength, maxLength, pattern
 VersionTag      // 版本标签：type ("added" | "removed"), version
 ApiExample      // 示例：name, request?, response, curlCommand?
-MessageGroup    // 消息分组：name, topic, messages[]
+MessageGroup    // 消息分组：name, topic, messages[]（由 @topic 装饰器的 model 自动归组）
 MessageDefinition // 消息定义：id, name, eventName, description, payload, examples, versionTags, deprecated
 MarkdownSnippet // 片段：name, content
 

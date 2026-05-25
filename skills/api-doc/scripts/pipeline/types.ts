@@ -11,7 +11,6 @@ export interface ParsedApiDoc {
   headerSnippets: MarkdownSnippet[];
   footerSnippets: MarkdownSnippet[];
   groups: ApiGroup[];
-  messageGroups: MessageGroup[];
 }
 
 export interface MarkdownSnippet {
@@ -22,18 +21,13 @@ export interface MarkdownSnippet {
 export interface ApiGroup {
   name: string;
   operations: ApiOperation[];
-}
-
-export interface MessageGroup {
-  name: string;
-  topic: string;
   messages: MessageDefinition[];
 }
 
 export interface MessageDefinition {
   id: string;
   name: string;
-  eventName: string;
+  topic: string;
   description?: string;
   payload?: ApiType;
   examples: ApiExample[];
@@ -153,7 +147,7 @@ export interface SidebarEntry {
 export type ContentSection =
   | { kind: "snippet"; anchorId: string; title: string; content: string }
   | { kind: "operation"; op: ApiOperation }
-  | { kind: "message"; msg: MessageDefinition; topic: string }
+  | { kind: "message"; msg: MessageDefinition }
   | { kind: "footer"; version: string };
 
 export interface DocumentAssets {

@@ -3,7 +3,7 @@ import "./models.tsp";
 import "./转运.tsp";
 import "./转运/装载包裹并转运.tsp";
 import "./查询/分页查询站点信息.tsp";
-import "./messages.tsp";
+import "./转运/消息.tsp";
 
 using TypeSpec.Http;
 

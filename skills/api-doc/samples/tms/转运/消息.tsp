@@ -1,11 +1,12 @@
 import "@typespec/http";
-import "@typespec/events";
-import "./models.tsp";
+import "../models.tsp";
 
 using TypeSpec.Http;
-using TypeSpec.Events;
+
+namespace TMS;
 
 @doc("转运任务创建消息")
+@topic("tms.task.events")
 model TaskCreateMessage {
   @doc("任务ID")
   taskId: string;
@@ -20,6 +21,7 @@ model TaskCreateMessage {
 }
 
 @doc("任务状态变更消息")
+@topic("tms.task.events")
 model TaskStatusChangeMessage {
   @doc("任务ID")
   taskId: string;
@@ -30,11 +32,4 @@ model TaskStatusChangeMessage {
   @doc("变更原因")
   @optionalIf("status=COMPLETED")
   reason?: string;
-}
-
-@doc("TMS 转运任务事件")
-@events
-union TmsTaskEvents {
-  taskCreated: TaskCreateMessage,
-  taskStatusChanged: TaskStatusChangeMessage,
 }

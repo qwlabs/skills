@@ -22,7 +22,6 @@ import type {
   ModelProperty,
   Type,
   Namespace,
-  Union,
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
@@ -40,7 +39,6 @@ import type {
   VersionTag,
   DagStage,
   StageContext,
-  MessageGroup,
 } from "../types";
 
 export const typespecParse: DagStage = {
@@ -56,7 +54,6 @@ export const typespecParse: DagStage = {
     ctx.doc.description = doc.description;
     ctx.doc.baseUrl = doc.baseUrl;
     ctx.doc.groups = doc.groups;
-    ctx.doc.messageGroups = doc.messageGroups;
     ctx.doc.headerSnippets = doc.headerSnippets;
     ctx.doc.footerSnippets = doc.footerSnippets;
     ctx.model.meta.title = doc.title;
@@ -117,11 +114,20 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     for (const httpOp of httpOps) {
       ops.push(extractOperation(program, httpOp, groupName, inputDir));
     }
-    groups.push({ name: groupName, operations: ops });
+    groups.push({ name: groupName, operations: ops, messages: [] });
   }
 
-  const messageGroups = extractMessageGroups(program, serviceNs, inputDir);
-  return { title, version, groups, messageGroups, headerSnippets: [], footerSnippets: [] };
+  const messagesByGroup = extractMessagesByFile(program, serviceNs, inputDir);
+  for (const [groupName, msgs] of messagesByGroup) {
+    const existingGroup = groups.find(g => g.name === groupName);
+    if (existingGroup) {
+      existingGroup.messages = msgs;
+    } else {
+      groups.push({ name: groupName, operations: [], messages: msgs });
+    }
+  }
+
+  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
   } finally {
     if (createdLink) {
       try { rmSync(linkPath, { recursive: true, force: true }); } catch { /* ignore */ }
@@ -560,73 +566,72 @@ function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
   return result;
 }
 
-function extractMessageGroups(
+function extractMessagesByFile(
   program: Program,
   serviceNs: Namespace,
   inputDir: string
-): MessageGroup[] {
-  const groupMap = new Map<string, import("../types").MessageDefinition[]>();
+): Map<string, import("../types").MessageDefinition[]> {
+  const result = new Map<string, import("../types").MessageDefinition[]>();
 
-  // Collect unions from both service namespace and global namespace
-  const allUnions = new Map<string, Union>();
-  for (const [name, u] of serviceNs.unions) {
-    allUnions.set(name, u);
+  // 收集所有 model（包括全局和 service 命名空间）
+  const allModels = new Map<string, Model>();
+  for (const [name, m] of serviceNs.models) {
+    allModels.set(name, m);
   }
   const globalNs = program.checker.getGlobalNamespaceType();
-  for (const [name, u] of globalNs.unions) {
-    if (!allUnions.has(name)) {
-      allUnions.set(name, u);
+  for (const [name, m] of globalNs.models) {
+    if (!allModels.has(name)) {
+      allModels.set(name, m);
     }
   }
 
-  for (const [name, unionType] of allUnions) {
-    if (!hasEventsDecorator(unionType)) continue;
+  for (const [name, model] of allModels) {
+    const topic = getTopicDecorator(model);
+    if (topic === undefined) continue;
 
-    const topicDoc = getDoc(program, unionType) || name;
+    const node = (model as any).node;
+    const filePath: string | undefined = node?.parent?.file?.path;
+    const groupName = filePath
+      ? deriveGroupNameFromPath(filePath, inputDir)
+      : "默认";
 
-    const messages: import("../types").MessageDefinition[] = [];
+    const doc = getDoc(program, model) || name;
+    const versionTags = extractVersionTags(model as any);
+    const deprecation = getDeprecationDetails(program, model as any) ?? undefined;
+    const payload = resolveType(program, model);
+    const examples = extractDocExamples(model as any);
 
-    for (const [variantName, variant] of unionType.variants) {
-      const variantType = variant.type;
-      if (variantType.kind !== "Model") continue;
+    const id = `msg-${groupName}-${name}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
 
-      const opDoc = getDoc(program, variantType) || variantType.name || variantName;
-      const versionTags = extractVersionTags(variantType as any);
-      const deprecation = getDeprecationDetails(program, variantType as any) ?? undefined;
-
-      const payload = resolveType(program, variantType);
-      const examples = extractDocExamples(variantType as any);
-
-      messages.push({
-        id: `msg-${name}-${variantName}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-"),
-        name: opDoc,
-        eventName: variantName,
-        description: getDoc(program, variantType) || undefined,
-        payload: payload.kind === "object" ? payload : undefined,
-        examples,
-        versionTags,
-        deprecated: deprecation,
-      });
+    if (!result.has(groupName)) {
+      result.set(groupName, []);
     }
-
-    if (messages.length > 0) {
-      groupMap.set(topicDoc, messages);
-    }
+    result.get(groupName)!.push({
+      id,
+      name: doc,
+      topic,
+      description: getDoc(program, model) || undefined,
+      payload: payload.kind === "object" ? payload : undefined,
+      examples,
+      versionTags,
+      deprecated: deprecation,
+    });
   }
 
-  const groups: MessageGroup[] = [];
-  for (const [topic, messages] of groupMap) {
-    groups.push({ name: topic, topic, messages });
-  }
-
-  return groups;
+  return result;
 }
 
-function hasEventsDecorator(unionType: Union): boolean {
-  for (const dec of (unionType as any).decorators || []) {
-    if (dec.definition?.name === "@events" || dec.definition?.name === "@TypeSpec.Events.events") {
-      return true;
+function getTopicDecorator(model: Model): string | undefined {
+  // TypeSpec compiler does not register unknown decorators on model.decorators,
+  // so we read from the AST node directly.
+  const node = (model as any).node;
+  if (node?.decorators) {
+    for (const dec of node.decorators) {
+      const targetName = dec.target?.sv || dec.target?.id?.sv;
+      if (targetName === "topic" && dec.arguments?.length > 0) {
+        return String(dec.arguments[0].value);
+      }
     }
   }
-  return false;
+  return undefined;
 }

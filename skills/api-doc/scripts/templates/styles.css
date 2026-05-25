@@ -117,7 +117,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
 .deprecated-banner-content{flex:1}
 .deprecated-banner-title{font-weight:700;margin-bottom:2px}
 .deprecated-banner-message{color:#78350f}
-.deprecated-section{border-left:3px solid #f59e0b}
 .deprecated-section .api-title{opacity:.7;text-decoration:line-through;text-decoration-color:rgba(255,255,255,.5)}
 .toc-link-deprecated{color:var(--doc-text-muted)!important;text-decoration:line-through!important}
 .toc-link-deprecated .deprecated-inline-badge{display:inline-block;background:#f59e0b;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;line-height:1.4}

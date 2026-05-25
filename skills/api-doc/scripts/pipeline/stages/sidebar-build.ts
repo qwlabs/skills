@@ -1,4 +1,3 @@
-// pipeline/stages/sidebar-build.ts
 import type { DagStage, StageContext, SidebarEntry } from "../types";
 import { slugify } from "../emit/html-helpers";
 
@@ -16,13 +15,9 @@ export const sidebarBuild: DagStage = {
     for (const group of ctx.doc.groups) {
       entries.push({ kind: "group-title", label: group.name });
       for (const op of group.operations) {
-        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, tag: op.verb.toUpperCase(), deprecated: op.deprecated });
+        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, tag: "HTTP", deprecated: op.deprecated });
       }
-    }
-
-    for (const msgGroup of ctx.doc.messageGroups) {
-      entries.push({ kind: "group-title", label: `${msgGroup.name} (MQ)` });
-      for (const msg of msgGroup.messages) {
+      for (const msg of group.messages) {
         entries.push({ kind: "message-link", label: msg.name, anchorId: msg.id, tag: "MQ", deprecated: msg.deprecated });
       }
     }

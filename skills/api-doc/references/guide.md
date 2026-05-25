@@ -110,6 +110,7 @@ namespace TMS;
 | `@added("v2")` / `@removed("v3")` | 版本标签，渲染为徽章 | `@added("2.0")` |
 | `@requiredIf("...")` | 条件必填说明，渲染为标签 | `@requiredIf("当 email 存在时必填")` |
 | `@optionalIf("...")` | 条件选填说明，渲染为标签 | `@optionalIf("当使用默认配置时选填")` |
+| `@topic("...")` | 标记 model 为 MQ 消息，指定 Topic 名称 | `@topic("tms.task.events")` |
 
 ## 添加示例（@opExample）
 
@@ -249,6 +250,48 @@ my-api/
 ```
 
 支持表格、代码块、列表等 Markdown 语法。
+
+## 消息定义（MQ Event）
+
+使用 `@topic` 装饰器将 model 标记为 MQ 消息。分组规则与 HTTP 接口一致（按目录/文件名）。HTTP 接口和 MQ 消息在同一目录下会合并到同一分组。
+
+### 定义消息
+
+```typespec
+@doc("转运任务创建消息")
+@topic("tms.task.events")
+model TaskCreateMessage {
+  @doc("任务ID")
+  taskId: string;
+  @doc("创建时间")
+  createdAt: datetime;
+}
+```
+
+- `@topic("...")` — 必填，指定消息的 Topic 名称
+- `@doc("...")` — 消息标题
+- 字段定义与 HTTP model 相同，支持所有约束装饰器
+- 支持所有 HTTP model 的特性：`@opExample`、`@added`/`@removed`、`#deprecated`、嵌套对象等
+
+### 分组规则
+
+与 HTTP 接口完全一致：
+1. operation 所在 namespace 上的 `@doc` 装饰器
+2. 根目录文件：使用文件名（去掉 `.tsp` 后缀）
+3. 子目录文件：使用直接父目录名
+
+HTTP 接口和 MQ 消息在同一目录下会合并到同一分组。
+
+### 示例目录结构
+
+```
+my-api/
+├── 转运/
+│   ├── 装载包裹.tsp        # HTTP 接口
+│   └── 装载消息.tsp        # MQ 消息（@topic）
+└── 查询/
+    └── 分页查询.tsp        # HTTP 接口
+```
 
 ## TypeSpec 官方资源
 
