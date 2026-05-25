@@ -23,6 +23,9 @@ description: >
 - Markdown 片段注入（header / footer）
 - 语法高亮（highlight.js）
 - 主题支持（内置 light 主题，支持自定义 CSS）
+- RocketMQ 消息定义（@typespec/events `@events` union）
+- 消息结构文档（Topic + Payload 属性表）
+- HTTP 接口与消息的视觉区分（MQ 标签、紫色边框）
 
 ## 使用
 

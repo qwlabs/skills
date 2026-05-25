@@ -95,15 +95,20 @@ async function main() {
 
   // 打印操作列表
   let totalOps = 0;
+  let totalMsgs = 0;
   for (const section of model.sections) {
     if (section.kind === "operation") {
       totalOps++;
       const op = section.op;
       console.log(`  [${op.group}] ${op.verb.toUpperCase()} ${op.path} — ${op.name}`);
     }
+    if (section.kind === "message") {
+      totalMsgs++;
+      console.log(`  [MQ] ${section.topic} → ${section.msg.eventName} — ${section.msg.name}`);
+    }
   }
   const groupNames = new Set(model.sidebar.filter(e => e.kind === "group-title").map(e => e.label));
-  console.log(`Total: ${totalOps} operations in ${groupNames.size} groups`);
+  console.log(`Total: ${totalOps} operations, ${totalMsgs} messages in ${groupNames.size} groups`);
 
   const outputPath = positional[1] || join(dirname(resolve(inputDir)), `${inputDirName}-${revision}.html`);
   console.log("Writing: " + outputPath);

@@ -51,6 +51,7 @@ interface DocumentModel {
 `ContentSection` 使用可辨识联合（discriminated union），将结构信息保留到最终输出阶段：
 - `{ kind: "snippet" }` — Markdown 片段（存储原始 markdown 内容）
 - `{ kind: "operation" }` — API 操作（直接引用 ApiOperation 对象）
+- `{ kind: "message" }` — RocketMQ 消息（引用 MessageDefinition 对象 + topic）
 - `{ kind: "footer" }` — 页脚版本信息
 
 ### 添加新输出格式
@@ -124,6 +125,8 @@ ApiProperty     // 对象属性：name, type, doc, example, required, defaultVal
 ApiConstraints  // 约束：minimum, maximum, minLength, maxLength, pattern
 VersionTag      // 版本标签：type ("added" | "removed"), version
 ApiExample      // 示例：name, request?, response, curlCommand?
+MessageGroup    // 消息分组：name, topic, messages[]
+MessageDefinition // 消息定义：id, name, eventName, description, payload, examples, versionTags, deprecated
 MarkdownSnippet // 片段：name, content
 
 DocumentModel   // 中间文档：meta, sidebar, sections, assets
