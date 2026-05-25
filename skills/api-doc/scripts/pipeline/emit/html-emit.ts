@@ -3,10 +3,22 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { render } from "./loader";
 import type { DagStage, StageContext, SidebarEntry, ContentSection, ProtocolKind } from "../types";
-import type { ApiOperation } from "../types";
+import type { ApiOperation, MessageDefinition } from "../types";
 import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge } from "./html-helpers";
 import { generateParameterRow, generatePropertyRows } from "./html-props";
 import { generateExampleSection } from "./html-examples";
+
+const PROTOCOL_META: Record<ProtocolKind, {
+  tagLabel: string;
+  tagColor: string;
+}> = {
+  http: { tagLabel: "HTTP", tagColor: "var(--doc-tag-post)" },
+  mq:   { tagLabel: "MQ",   tagColor: "var(--doc-tag-mq)" },
+};
+
+function renderDeprecatedBanner(msg: string): string {
+  return `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">${msg}</div></div></div>\n`;
+}
 
 export const htmlEmit: DagStage = {
   name: "html-emit",
@@ -66,10 +78,10 @@ function renderSections(sections: ContentSection[]): string {
         html += `<section class="api-section" id="${section.anchorId}"><div class="api-title">${escapeHtml(section.title)}</div><div class="markdown-section">${simpleMarkdownToHtml(section.content)}</div></section>\n`;
         break;
       case "operation":
-        html += renderOperation(section.op);
+        html += renderDocCard(section.op, "http");
         break;
       case "message":
-        html += renderMessage(section.msg);
+        html += renderDocCard(section.msg, "mq");
         break;
       case "footer":
         html += buildFooterBadge(section.version);
@@ -79,124 +91,98 @@ function renderSections(sections: ContentSection[]): string {
   return html;
 }
 
-function renderOperation(op: ApiOperation): string {
+function renderDocCard(data: ApiOperation | MessageDefinition, protocol: ProtocolKind): string {
+  const meta = PROTOCOL_META[protocol];
   let html = "";
 
-  const sectionClass = "api-section";
-  html += `<section class="${sectionClass}" id="${op.id}">\n`;
-  html += `<div class="api-title">${escapeHtml(op.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-post)">HTTP</span></div>\n`;
+  html += `<section class="doc-card" id="${data.id}">\n`;
+  html += `<div class="api-title">${escapeHtml(data.name)}<span class="api-title-tag" style="background-color:${meta.tagColor}">${meta.tagLabel}</span></div>\n`;
 
-  if (op.deprecated) {
-    html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此接口已废弃</div><div class="deprecated-banner-message">${escapeHtml(op.deprecated.message)}</div></div></div>\n`;
+  if (data.deprecated) {
+    const bannerMsg = protocol === "http" ? "此接口已废弃" : "此消息已废弃";
+    html += renderDeprecatedBanner(bannerMsg);
+    html += `<div class="deprecated-banner-message">${escapeHtml(data.deprecated.message)}</div>\n`;
   }
 
-  // Metadata: verb + path
+  // Metadata
   html += '<div class="meta-section">\n';
-  html += `<div class="meta-block"><span class="meta-label">方法</span><span class="meta-value">${render("tag", op.verb.toUpperCase())}</span></div>\n`;
-  html += `<div class="meta-block"><span class="meta-label">路径</span><span class="meta-value">${render("code", op.path)}</span></div>\n`;
-  if (op.versionTags.length > 0) {
-    for (const vt of op.versionTags) {
-      const label =
-        vt.type === "added"
-          ? `Added in ${vt.version}`
-          : `Removed in ${vt.version}`;
-      html += `<div class="meta-block"><span class="meta-value">${render("badge", label)}</span></div>\n`;
-    }
+  if (protocol === "http") {
+    const op = data as ApiOperation;
+    html += `<div class="meta-block"><span class="meta-label">方法</span><span class="meta-value">${render("tag", op.verb.toUpperCase())}</span></div>\n`;
+    html += `<div class="meta-block"><span class="meta-label">路径</span><span class="meta-value">${render("code", op.path)}</span></div>\n`;
+  } else {
+    const msg = data as MessageDefinition;
+    html += `<div class="meta-block meta-block-wide"><span class="meta-label">Topic</span><span class="meta-value">${render("code", msg.topic)}</span></div>\n`;
   }
-  html += "</div>\n";
-
-  // Request parameters (header, query, path, cookie)
-  if (op.parameters.length > 0) {
-    html +=
-      '<div class="section"><div class="section-title">请求参数</div>\n';
-    html +=
-      '<table class="param-table cols-6"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-location">位置</th><th class="col-desc">说明</th><th class="col-required">必填</th><th class="col-constraint">约束</th></tr></thead><tbody>\n';
-    for (const param of op.parameters) {
-      html += generateParameterRow(param);
-    }
-    html += "</tbody></table></div>";
-  }
-
-  // Request body
-  if (op.body && op.body.type.kind === "object") {
-    html += '<div class="section"><div class="section-title">请求参数</div>\n';
-    html +=
-      '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
-    html += generatePropertyRows(op.body.type.properties, 0);
-    html += "</tbody></table></div>";
-  }
-
-  // Response parameters
-  for (const resp of op.responses) {
-    if (!resp.isError && resp.type && resp.type.kind === "object") {
-      html +=
-        '<div class="section"><div class="section-title">返回参数</div>\n';
-      html +=
-        '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
-      html += generatePropertyRows(resp.type.properties, 0);
-      html += "</tbody></table></div>";
-      break;
-    }
-  }
-
-  // Examples
-  if (op.examples.length > 0) {
-    html += generateExampleSection(op.id, op.examples);
-  }
-
-  // Error responses summary
-  const errorResponses = op.responses.filter((r) => r.isError);
-  if (errorResponses.length > 0) {
-    html +=
-      '<div class="section"><div class="section-title">错误响应</div>\n';
-    html +=
-      '<table class="param-table"><thead><tr><th>状态码</th><th>说明</th></tr></thead><tbody>\n';
-    for (const err of errorResponses) {
-      html += `<tr><td><span class="field-type">${escapeHtml(err.statusCode)}</span></td><td>${escapeHtml(err.description || "")}</td></tr>\n`;
-    }
-    html += "</tbody></table></div>";
-  }
-
-  html += "</section>\n";
-  return html;
-}
-
-function renderMessage(msg: import("../types").MessageDefinition): string {
-  let html = "";
-
-  const sectionClass = "message-section";
-  html += `<section class="${sectionClass}" id="${msg.id}">\n`;
-  html += `<div class="api-title">${escapeHtml(msg.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-mq)">MQ</span></div>\n`;
-
-  if (msg.deprecated) {
-    html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此消息已废弃</div><div class="deprecated-banner-message">${escapeHtml(msg.deprecated.message)}</div></div></div>\n`;
-  }
-
-  // Metadata: only Topic (no Type, no Event)
-  html += '<div class="meta-section">\n';
-  html += `<div class="meta-block meta-block-mq-topic"><span class="meta-label">Topic</span><span class="meta-value">${render("code", msg.topic)}</span></div>\n`;
-  if (msg.versionTags.length > 0) {
-    for (const vt of msg.versionTags) {
+  if (data.versionTags.length > 0) {
+    for (const vt of data.versionTags) {
       const label = vt.type === "added" ? `Added in ${vt.version}` : `Removed in ${vt.version}`;
       html += `<div class="meta-block"><span class="meta-value">${render("badge", label)}</span></div>\n`;
     }
   }
   html += "</div>\n";
 
-  if (msg.description && msg.description !== msg.name) {
-    html += `<div class="markdown-section">${simpleMarkdownToHtml(msg.description)}</div>\n`;
+  // Description (message only)
+  if (protocol === "mq") {
+    const msg = data as MessageDefinition;
+    if (msg.description && msg.description !== msg.name) {
+      html += `<div class="markdown-section">${simpleMarkdownToHtml(msg.description)}</div>\n`;
+    }
   }
 
-  if (msg.payload && msg.payload.kind === "object") {
-    html += '<div class="section"><div class="section-title">消息结构</div>\n';
-    html +=
-      '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
-    html += generatePropertyRows(msg.payload.properties, 0);
-    html += "</tbody></table></div>";
+  // Parameters / Payload table
+  if (protocol === "http") {
+    const op = data as ApiOperation;
+    if (op.parameters.length > 0) {
+      html += '<div class="section"><div class="section-title">请求参数</div>\n';
+      html += '<table class="param-table cols-6"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-location">位置</th><th class="col-desc">说明</th><th class="col-required">必填</th><th class="col-constraint">约束</th></tr></thead><tbody>\n';
+      for (const param of op.parameters) {
+        html += generateParameterRow(param);
+      }
+      html += "</tbody></table></div>";
+    }
+    if (op.body && op.body.type.kind === "object") {
+      html += '<div class="section"><div class="section-title">请求参数</div>\n';
+      html += '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
+      html += generatePropertyRows(op.body.type.properties, 0);
+      html += "</tbody></table></div>";
+    }
+    for (const resp of op.responses) {
+      if (!resp.isError && resp.type && resp.type.kind === "object") {
+        html += '<div class="section"><div class="section-title">返回参数</div>\n';
+        html += '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
+        html += generatePropertyRows(resp.type.properties, 0);
+        html += "</tbody></table></div>";
+        break;
+      }
+    }
+  } else {
+    const msg = data as MessageDefinition;
+    if (msg.payload && msg.payload.kind === "object") {
+      html += '<div class="section"><div class="section-title">消息结构</div>\n';
+      html += '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
+      html += generatePropertyRows(msg.payload.properties, 0);
+      html += "</tbody></table></div>";
+    }
   }
 
-  if (msg.examples.length > 0) {
-    html += generateExampleSection(msg.id, msg.examples);
+  // Examples
+  if (data.examples.length > 0) {
+    html += generateExampleSection(data.id, data.examples);
+  }
+
+  // Error responses (http only)
+  if (protocol === "http") {
+    const op = data as ApiOperation;
+    const errorResponses = op.responses.filter((r) => r.isError);
+    if (errorResponses.length > 0) {
+      html += '<div class="section"><div class="section-title">错误响应</div>\n';
+      html += '<table class="param-table"><thead><tr><th>状态码</th><th>说明</th></tr></thead><tbody>\n';
+      for (const err of errorResponses) {
+        html += `<tr><td><span class="field-type">${escapeHtml(err.statusCode)}</span></td><td>${escapeHtml(err.description || "")}</td></tr>\n`;
+      }
+      html += "</tbody></table></div>";
+    }
   }
 
   html += "</section>\n";
