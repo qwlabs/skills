@@ -18,10 +18,10 @@ function toggleSidebar(){
     localStorage.setItem('sidebarCollapsed',isCollapsed)
 }
 function highlightToc(e){
-    document.querySelectorAll('.toc-link,.toc-message-link').forEach(l=>l.classList.remove('active'));
+    document.querySelectorAll('.toc-link').forEach(l=>l.classList.remove('active'));
     e.classList.add('active')
 }
-document.querySelectorAll('.toc-link,.toc-message-link').forEach(l=>{
+document.querySelectorAll('.toc-link').forEach(l=>{
     l.addEventListener('click',function(){
         highlightToc(this)
     })
@@ -30,13 +30,13 @@ const observer=new IntersectionObserver((entries)=>{
     entries.forEach(entry=>{
         if(entry.isIntersecting){
             const id=entry.target.id;
-            document.querySelectorAll('.toc-link,.toc-message-link').forEach(l=>l.classList.remove('active'));
-            const activeLink=document.querySelector('.toc-link[href="#'+id+'"],.toc-message-link[href="#'+id+'"]');
+            document.querySelectorAll('.toc-link').forEach(l=>l.classList.remove('active'));
+            const activeLink=document.querySelector('.toc-link[href="#'+id+'"]');
             if(activeLink)activeLink.classList.add('active')
         }
     })
 });
-document.querySelectorAll('.api-section,.message-section').forEach(s=>observer.observe(s));
+document.querySelectorAll('.doc-card').forEach(s=>observer.observe(s));
 document.addEventListener('DOMContentLoaded',function(){
     document.querySelectorAll('pre code').forEach(function(block){hljs.highlightElement(block)});
     const collapsed=localStorage.getItem('sidebarCollapsed')==='true';
