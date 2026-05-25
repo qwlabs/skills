@@ -6,6 +6,7 @@ const TAG_VAR_MAP: Record<string, string> = {
   PUT: 'var(--doc-tag-put)',
   DELETE: 'var(--doc-tag-delete)',
   PATCH: 'var(--doc-tag-patch)',
+  MQ: 'var(--doc-tag-mq)',
 };
 
 export function tag(value: any, options?: RenderOptions & { colors?: Record<string, string> }): RenderResult {
