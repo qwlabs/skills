@@ -20,6 +20,13 @@ export const sidebarBuild: DagStage = {
       }
     }
 
+    for (const msgGroup of ctx.doc.messageGroups) {
+      entries.push({ kind: "group-title", label: `${msgGroup.name} (MQ)` });
+      for (const msg of msgGroup.messages) {
+        entries.push({ kind: "message-link", label: msg.name, anchorId: msg.id, deprecated: msg.deprecated });
+      }
+    }
+
     for (const snippet of ctx.doc.footerSnippets) {
       entries.push({ kind: "snippet-link", label: snippet.name, anchorId: `snippet-footer-${slugify(snippet.name)}` });
     }

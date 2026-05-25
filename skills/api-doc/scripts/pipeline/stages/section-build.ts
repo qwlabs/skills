@@ -19,6 +19,12 @@ export const sectionBuild: DagStage = {
       }
     }
 
+    for (const msgGroup of ctx.doc.messageGroups) {
+      for (const msg of msgGroup.messages) {
+        sections.push({ kind: "message", msg, topic: msgGroup.topic });
+      }
+    }
+
     for (const snippet of ctx.doc.footerSnippets) {
       sections.push({ kind: "snippet", anchorId: `snippet-footer-${slugify(snippet.name)}`, title: snippet.name, content: snippet.content });
     }
