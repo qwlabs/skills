@@ -16,14 +16,14 @@ export const sidebarBuild: DagStage = {
     for (const group of ctx.doc.groups) {
       entries.push({ kind: "group-title", label: group.name });
       for (const op of group.operations) {
-        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, deprecated: op.deprecated });
+        entries.push({ kind: "operation-link", label: op.name, anchorId: op.id, tag: op.verb.toUpperCase(), deprecated: op.deprecated });
       }
     }
 
     for (const msgGroup of ctx.doc.messageGroups) {
       entries.push({ kind: "group-title", label: `${msgGroup.name} (MQ)` });
       for (const msg of msgGroup.messages) {
-        entries.push({ kind: "message-link", label: msg.name, anchorId: msg.id, deprecated: msg.deprecated });
+        entries.push({ kind: "message-link", label: msg.name, anchorId: msg.id, tag: "MQ", deprecated: msg.deprecated });
       }
     }
 

@@ -146,6 +146,7 @@ export interface SidebarEntry {
   kind: "group-title" | "operation-link" | "snippet-link" | "message-link";
   label: string;
   anchorId?: string;
+  tag?: string;
   deprecated?: DeprecationDetails;
 }
 
