@@ -22,6 +22,7 @@ import type {
   ModelProperty,
   Type,
   Namespace,
+  Union,
 } from "@typespec/compiler";
 import { getAllHttpServices } from "@typespec/http";
 import type { HttpOperation } from "@typespec/http";
@@ -39,6 +40,7 @@ import type {
   VersionTag,
   DagStage,
   StageContext,
+  MessageGroup,
 } from "../types";
 
 export const typespecParse: DagStage = {
@@ -54,6 +56,7 @@ export const typespecParse: DagStage = {
     ctx.doc.description = doc.description;
     ctx.doc.baseUrl = doc.baseUrl;
     ctx.doc.groups = doc.groups;
+    ctx.doc.messageGroups = doc.messageGroups;
     ctx.doc.headerSnippets = doc.headerSnippets;
     ctx.doc.footerSnippets = doc.footerSnippets;
     ctx.model.meta.title = doc.title;
@@ -117,7 +120,8 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     groups.push({ name: groupName, operations: ops });
   }
 
-  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
+  const messageGroups = extractMessageGroups(program, serviceNs, inputDir);
+  return { title, version, groups, messageGroups, headerSnippets: [], footerSnippets: [] };
   } finally {
     if (createdLink) {
       try { rmSync(linkPath, { recursive: true, force: true }); } catch { /* ignore */ }
@@ -554,4 +558,75 @@ function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
     result[k] = deepCloneValue(v, seen);
   }
   return result;
+}
+
+function extractMessageGroups(
+  program: Program,
+  serviceNs: Namespace,
+  inputDir: string
+): MessageGroup[] {
+  const groupMap = new Map<string, import("../types").MessageDefinition[]>();
+
+  // Collect unions from both service namespace and global namespace
+  const allUnions = new Map<string, Union>();
+  for (const [name, u] of serviceNs.unions) {
+    allUnions.set(name, u);
+  }
+  const globalNs = program.checker.getGlobalNamespaceType();
+  for (const [name, u] of globalNs.unions) {
+    if (!allUnions.has(name)) {
+      allUnions.set(name, u);
+    }
+  }
+
+  for (const [name, unionType] of allUnions) {
+    if (!hasEventsDecorator(unionType)) continue;
+
+    const topicDoc = getDoc(program, unionType) || name;
+
+    const messages: import("../types").MessageDefinition[] = [];
+
+    for (const [variantName, variant] of unionType.variants) {
+      const variantType = variant.type;
+      if (variantType.kind !== "Model") continue;
+
+      const opDoc = getDoc(program, variantType) || variantType.name || variantName;
+      const versionTags = extractVersionTags(variantType as any);
+      const deprecation = getDeprecationDetails(program, variantType as any) ?? undefined;
+
+      const payload = resolveType(program, variantType);
+      const examples = extractDocExamples(variantType as any);
+
+      messages.push({
+        id: `msg-${name}-${variantName}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-"),
+        name: opDoc,
+        eventName: variantName,
+        description: getDoc(program, variantType) || undefined,
+        payload: payload.kind === "object" ? payload : undefined,
+        examples,
+        versionTags,
+        deprecated: deprecation,
+      });
+    }
+
+    if (messages.length > 0) {
+      groupMap.set(topicDoc, messages);
+    }
+  }
+
+  const groups: MessageGroup[] = [];
+  for (const [topic, messages] of groupMap) {
+    groups.push({ name: topic, topic, messages });
+  }
+
+  return groups;
+}
+
+function hasEventsDecorator(unionType: Union): boolean {
+  for (const dec of (unionType as any).decorators || []) {
+    if (dec.definition?.name === "@events" || dec.definition?.name === "@TypeSpec.Events.events") {
+      return true;
+    }
+  }
+  return false;
 }

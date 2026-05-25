@@ -11,6 +11,7 @@ export interface ParsedApiDoc {
   headerSnippets: MarkdownSnippet[];
   footerSnippets: MarkdownSnippet[];
   groups: ApiGroup[];
+  messageGroups: MessageGroup[];
 }
 
 export interface MarkdownSnippet {
@@ -21,6 +22,23 @@ export interface MarkdownSnippet {
 export interface ApiGroup {
   name: string;
   operations: ApiOperation[];
+}
+
+export interface MessageGroup {
+  name: string;
+  topic: string;
+  messages: MessageDefinition[];
+}
+
+export interface MessageDefinition {
+  id: string;
+  name: string;
+  eventName: string;
+  description?: string;
+  payload?: ApiType;
+  examples: ApiExample[];
+  versionTags: VersionTag[];
+  deprecated?: DeprecationDetails;
 }
 
 export interface DeprecationDetails {
@@ -125,7 +143,7 @@ export interface DocumentModel {
 }
 
 export interface SidebarEntry {
-  kind: "group-title" | "operation-link" | "snippet-link";
+  kind: "group-title" | "operation-link" | "snippet-link" | "message-link";
   label: string;
   anchorId?: string;
   deprecated?: DeprecationDetails;
@@ -134,6 +152,7 @@ export interface SidebarEntry {
 export type ContentSection =
   | { kind: "snippet"; anchorId: string; title: string; content: string }
   | { kind: "operation"; op: ApiOperation }
+  | { kind: "message"; msg: MessageDefinition; topic: string }
   | { kind: "footer"; version: string };
 
 export interface DocumentAssets {
