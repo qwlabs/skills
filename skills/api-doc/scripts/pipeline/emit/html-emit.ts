@@ -93,7 +93,7 @@ function renderOperation(op: ApiOperation): string {
 
   const sectionClass = "api-section";
   html += `<section class="${sectionClass}" id="${op.id}">\n`;
-  html += `<div class="api-title">${escapeHtml(op.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-${op.verb.toLowerCase()})">${op.verb.toUpperCase()}</span></div>\n`;
+  html += `<div class="api-title">${escapeHtml(op.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-post)">HTTP</span></div>\n`;
 
   if (op.deprecated) {
     html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此接口已废弃</div><div class="deprecated-banner-message">${escapeHtml(op.deprecated.message)}</div></div></div>\n`;
