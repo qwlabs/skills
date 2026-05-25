@@ -41,20 +41,24 @@ function renderSidebar(entries: SidebarEntry[]): string {
       case "group-title":
         html += `<li class="toc-group"><div class="toc-group-title">${escapeHtml(entry.label)}</div></li>\n`;
         break;
-      case "operation-link":
+      case "operation-link": {
+        const tagHtml = entry.tag ? `<span class="toc-tag toc-tag-http">${escapeHtml(entry.tag)}</span>` : "";
         if (entry.deprecated) {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link toc-link-deprecated">${escapeHtml(entry.label)}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link toc-link-deprecated">${escapeHtml(entry.label)}${tagHtml}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
         } else {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link">${escapeHtml(entry.label)}</a></li>\n`;
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-link">${escapeHtml(entry.label)}${tagHtml}</a></li>\n`;
         }
         break;
-      case "message-link":
+      }
+      case "message-link": {
+        const tagHtml = entry.tag ? `<span class="toc-tag toc-tag-mq">${escapeHtml(entry.tag)}</span>` : "";
         if (entry.deprecated) {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link toc-message-link-deprecated">${escapeHtml(entry.label)}<span class="mq-badge">MQ</span><span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link toc-message-link-deprecated">${escapeHtml(entry.label)}${tagHtml}<span class="deprecated-inline-badge">已废弃</span></a></li>\n`;
         } else {
-          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link">${escapeHtml(entry.label)}<span class="mq-badge">MQ</span></a></li>\n`;
+          html += `<li class="toc-item"><a href="#${entry.anchorId}" class="toc-message-link">${escapeHtml(entry.label)}${tagHtml}</a></li>\n`;
         }
         break;
+      }
       case "snippet-link":
         html += `<li class="toc-group"><a href="#${entry.anchorId}" class="toc-group-title">${escapeHtml(entry.label)}</a></li>\n`;
         break;
@@ -89,7 +93,7 @@ function renderOperation(op: ApiOperation): string {
 
   const sectionClass = op.deprecated ? "api-section deprecated-section" : "api-section";
   html += `<section class="${sectionClass}" id="${op.id}">\n`;
-  html += `<div class="api-title">${escapeHtml(op.name)}</div>\n`;
+  html += `<div class="api-title">${escapeHtml(op.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-${op.verb.toLowerCase()})">${op.verb.toUpperCase()}</span></div>\n`;
 
   if (op.deprecated) {
     html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此接口已废弃</div><div class="deprecated-banner-message">${escapeHtml(op.deprecated.message)}</div></div></div>\n`;
@@ -171,7 +175,7 @@ function renderMessage(msg: import("../types").MessageDefinition, topic: string)
 
   const sectionClass = msg.deprecated ? "message-section deprecated-section" : "message-section";
   html += `<section class="${sectionClass}" id="${msg.id}">\n`;
-  html += `<div class="api-title">${escapeHtml(msg.name)}</div>\n`;
+  html += `<div class="api-title">${escapeHtml(msg.name)}<span class="api-title-tag" style="background-color:var(--doc-tag-mq)">MQ</span></div>\n`;
 
   if (msg.deprecated) {
     html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">此消息已废弃</div><div class="deprecated-banner-message">${escapeHtml(msg.deprecated.message)}</div></div></div>\n`;
