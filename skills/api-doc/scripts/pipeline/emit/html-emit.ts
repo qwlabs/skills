@@ -75,7 +75,7 @@ function renderSections(sections: ContentSection[]): string {
   for (const section of sections) {
     switch (section.kind) {
       case "snippet":
-        html += `<section class="api-section" id="${section.anchorId}"><div class="api-title">${escapeHtml(section.title)}</div><div class="markdown-section">${simpleMarkdownToHtml(section.content)}</div></section>\n`;
+        html += `<section class="doc-card" id="${section.anchorId}"><div class="api-title">${escapeHtml(section.title)}</div><div class="markdown-section">${simpleMarkdownToHtml(section.content)}</div></section>\n`;
         break;
       case "operation":
         html += renderDocCard(section.op, "http");
