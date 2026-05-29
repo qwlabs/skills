@@ -42,6 +42,7 @@ export interface DeprecationDetails {
 export interface ApiOperation {
   id: string;
   name: string;
+  description?: string;
   verb: string;
   path: string;
   group: string;

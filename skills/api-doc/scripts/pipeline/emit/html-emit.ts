@@ -98,12 +98,6 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
   html += `<section class="doc-card" id="${data.id}">\n`;
   html += `<div class="api-title">${escapeHtml(data.name)}<span class="api-title-tag" style="background-color:${meta.tagColor}">${meta.tagLabel}</span></div>\n`;
 
-  if (data.deprecated) {
-    const bannerMsg = protocol === "http" ? "此接口已废弃" : "此消息已废弃";
-    html += renderDeprecatedBanner(bannerMsg);
-    html += `<div class="deprecated-banner-message">${escapeHtml(data.deprecated.message)}</div>\n`;
-  }
-
   // Metadata
   html += '<div class="meta-section">\n';
   if (protocol === "http") {
@@ -121,6 +115,20 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
     }
   }
   html += "</div>\n";
+
+  // Deprecated banner (after meta-section)
+  if (data.deprecated) {
+    const bannerMsg = protocol === "http" ? "此接口已废弃" : "此消息已废弃";
+    html += `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">${bannerMsg}</div><div class="deprecated-banner-message">${escapeHtml(data.deprecated.message)}</div></div></div>\n`;
+  }
+
+  // Description (http only, after meta-section)
+  if (protocol === "http") {
+    const op = data as ApiOperation;
+    if (op.description) {
+      html += `<div class="markdown-section">${simpleMarkdownToHtml(op.description)}</div>\n`;
+    }
+  }
 
   // Description (message only)
   if (protocol === "mq") {

@@ -264,7 +264,8 @@ function extractOperation(
   inputDir: string
 ): ApiOperationType {
   const op = httpOp.operation;
-  const name = getDoc(program, op) || deriveOpNameFromPath(op, inputDir) || op.name;
+  const name = deriveOpNameFromPath(op, inputDir) || op.name;
+  const description = getDoc(program, op) ?? undefined;
   const verb = httpOp.verb;
   const path = httpOp.path;
   const id = `${group}-${op.name}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
@@ -321,6 +322,7 @@ function extractOperation(
   return {
     id,
     name,
+    description,
     verb,
     path,
     group,

@@ -74,4 +74,20 @@
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live as GitHub issues. Use the `gh` CLI for all operations. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the five canonical triage label names (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md` files. See `docs/agents/domain.md`.
+
+---
+
 **这些准则有效的标志：** diff 中不必要改动更少，因过度复杂导致的重写更少，澄清问题出现在实现之前而非犯错之后。

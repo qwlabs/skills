@@ -16,7 +16,8 @@ model StationLayContainerRequest extends HualeiRequest {
     };
 }
 
-@doc("站点放置容器")
+// Scene: 用户可以在列表页面点击「装载」按钮，对单个站点发起装载请求。系统会自动锁定站点，防止并发操作。如果站点已有容器，会返回错误。
+@doc("用户可以在列表页面点击「装载」按钮，对单个站点发起装载请求。系统会自动锁定站点，防止并发操作。如果站点已有容器，会返回错误。")
 @route("/orbit/modeling/webApi")
 @post
 @opExample(#{
