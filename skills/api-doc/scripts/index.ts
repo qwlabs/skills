@@ -104,7 +104,7 @@ async function main() {
     }
     if (section.kind === "message") {
       totalMsgs++;
-      console.log(`  [MQ] ${section.topic} → ${section.msg.eventName} — ${section.msg.name}`);
+      console.log(`  [MQ] ${section.msg.topic} — ${section.msg.name}`);
     }
   }
   const groupNames = new Set(model.sidebar.filter(e => e.kind === "group-title").map(e => e.label));

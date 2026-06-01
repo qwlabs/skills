@@ -145,7 +145,7 @@ export interface SidebarEntry {
   kind: "group-title" | "doc-link" | "snippet-link";
   label: string;
   anchorId?: string;
-  protocol: ProtocolKind;
+  protocol?: ProtocolKind;
   deprecated?: DeprecationDetails;
 }
 

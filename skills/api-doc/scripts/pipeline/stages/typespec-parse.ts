@@ -268,7 +268,7 @@ function extractOperation(
   const description = getDoc(program, op) ?? undefined;
   const verb = httpOp.verb;
   const path = httpOp.path;
-  const id = `${group}-${op.name}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
+  const id = `${group}-${op.name}`.replace(/[^\-a-zA-Z0-9一-鿿]/g, "-");
 
   const parameters: ApiParameter[] = [];
   for (const param of httpOp.parameters.parameters) {
@@ -603,16 +603,16 @@ function extractMessagesByFile(
     const payload = resolveType(program, model);
     const examples = extractDocExamples(model as any);
 
-    const id = `msg-${groupName}-${name}`.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
+    const id = `msg-${groupName}-${name}`.replace(/[^\-a-zA-Z0-9一-鿿]/g, "-");
 
     if (!result.has(groupName)) {
       result.set(groupName, []);
     }
     result.get(groupName)!.push({
       id,
-      name: doc,
+      name,
       topic,
-      description: getDoc(program, model) || undefined,
+      description: doc !== name ? doc : undefined,
       payload: payload.kind === "object" ? payload : undefined,
       examples,
       versionTags,

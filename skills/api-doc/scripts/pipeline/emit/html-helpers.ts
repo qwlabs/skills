@@ -12,7 +12,7 @@ export function escapeHtml(text: string): string {
 }
 
 export function slugify(text: string): string {
-  return text.replace(/[^a-zA-Z0-9一-鿿-]/g, "-");
+  return text.replace(/[^\-a-zA-Z0-9一-鿿]/g, "-");
 }
 
 export function formatType(type: ApiType): string {
@@ -116,16 +116,19 @@ export function simpleMarkdownToHtml(md: string): string {
   html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
 
   // Unordered lists: - item
-  html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
-  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, (match) => {
-    if (!match.startsWith("<ul>")) return `<ul>${match}</ul>`;
-    return match;
-  });
-  // Merge consecutive <ul> blocks
-  html = html.replace(/<\/ul>\n<ul>/g, "\n");
-
+  html = html.replace(/^- (.+)$/gm, "\x00ULI\x00$1\x00/ULI\x00");
   // Ordered lists: 1. item
-  html = html.replace(/^\d+\. (.+)$/gm, "<li>$1</li>");
+  html = html.replace(/^\d+\. (.+)$/gm, "\x00OLI\x00$1\x00/OLI\x00");
+  // Wrap consecutive unordered items into <ul>
+  html = html.replace(/(\x00ULI\x00[^\x00]*\x00\/ULI\x00(\n|$))+/g, (match) => {
+    const items = match.replace(/\x00ULI\x00/g, "<li>").replace(/\x00\/ULI\x00/g, "</li>");
+    return `<ul>${items}</ul>`;
+  });
+  // Wrap consecutive ordered items into <ol>
+  html = html.replace(/(\x00OLI\x00[^\x00]*\x00\/OLI\x00(\n|$))+/g, (match) => {
+    const items = match.replace(/\x00OLI\x00/g, "<li>").replace(/\x00\/OLI\x00/g, "</li>");
+    return `<ol>${items}</ol>`;
+  });
 
   // Links: [text](url)
   html = html.replace(
@@ -155,6 +158,8 @@ export function simpleMarkdownToHtml(md: string): string {
   html = html.replace(/(<\/pre>)\s*<\/p>/g, "$1");
   html = html.replace(/<p>\s*(<ul>)/g, "$1");
   html = html.replace(/(<\/ul>)\s*<\/p>/g, "$1");
+  html = html.replace(/<p>\s*(<ol>)/g, "$1");
+  html = html.replace(/(<\/ol>)\s*<\/p>/g, "$1");
   html = html.replace(/<p>\s*(<table)/g, "$1");
   html = html.replace(/(<\/table>)\s*<\/p>/g, "$1");
   html = html.replace(/<p>\s*<\/p>/g, "");

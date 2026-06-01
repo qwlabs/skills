@@ -20,7 +20,6 @@ export async function runPipeline(
     headerSnippets: [],
     footerSnippets: [],
     groups: [],
-    messageGroups: [],
   };
   const model = createModel();
   const ctx: StageContext = { doc, model, config };

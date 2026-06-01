@@ -77,22 +77,21 @@ function formatConstraintsHtml(required: boolean, c: ApiConstraints, defaultValu
     lines.push(`<span class="constraint-tag constraint-optional">选填</span>${defaultPart}`);
   }
 
-  const cAny = c as Record<string, unknown>;
-  if (cAny.minimum !== undefined || cAny.maximum !== undefined) {
-    const min = cAny.minimum !== undefined ? String(cAny.minimum) : "";
-    const max = cAny.maximum !== undefined ? String(cAny.maximum) : "";
+  if (c.minimum !== undefined || c.maximum !== undefined) {
+    const min = c.minimum !== undefined ? String(c.minimum) : "";
+    const max = c.maximum !== undefined ? String(c.maximum) : "";
     const expr = min && max ? `[${min}, ${max}]` : min ? `≥ ${min}` : `≤ ${max}`;
     lines.push(`<span class="constraint-item">值域 ${expr}</span>`);
   }
-  if (cAny.minLength !== undefined || cAny.maxLength !== undefined) {
-    const min = cAny.minLength !== undefined ? String(cAny.minLength) : "";
-    const max = cAny.maxLength !== undefined ? String(cAny.maxLength) : "";
+  if (c.minLength !== undefined || c.maxLength !== undefined) {
+    const min = c.minLength !== undefined ? String(c.minLength) : "";
+    const max = c.maxLength !== undefined ? String(c.maxLength) : "";
     const expr = min && max ? `[${min}, ${max}]` : min ? `≥ ${min}` : `≤ ${max}`;
     lines.push(`<span class="constraint-item">长度 ${expr}</span>`);
   }
 
-  if (cAny.pattern !== undefined) {
-    lines.push(`<span class="constraint-item">格式 /${cAny.pattern}/</span>`);
+  if (c.pattern !== undefined) {
+    lines.push(`<span class="constraint-item">格式 /${c.pattern}/</span>`);
   }
 
   return lines.join("<br>");

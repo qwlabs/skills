@@ -16,10 +16,6 @@ const PROTOCOL_META: Record<ProtocolKind, {
   mq:   { tagLabel: "MQ",   tagColor: "var(--doc-tag-mq)" },
 };
 
-function renderDeprecatedBanner(msg: string): string {
-  return `<div class="deprecated-banner"><span class="deprecated-banner-icon">⚠</span><div class="deprecated-banner-content"><div class="deprecated-banner-title">${msg}</div></div></div>\n`;
-}
-
 export const htmlEmit: DagStage = {
   name: "html-emit",
   requires: ["model.sidebar", "model.sections", "model.assets", "model.meta"],
@@ -133,7 +129,7 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
   // Description (message only)
   if (protocol === "mq") {
     const msg = data as MessageDefinition;
-    if (msg.description && msg.description !== msg.name) {
+    if (msg.description) {
       html += `<div class="markdown-section">${simpleMarkdownToHtml(msg.description)}</div>\n`;
     }
   }
@@ -150,18 +146,20 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
       html += "</tbody></table></div>";
     }
     if (op.body && op.body.type.kind === "object") {
-      html += '<div class="section"><div class="section-title">请求参数</div>\n';
+      html += '<div class="section"><div class="section-title">请求体</div>\n';
       html += '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
       html += generatePropertyRows(op.body.type.properties, 0);
       html += "</tbody></table></div>";
     }
     for (const resp of op.responses) {
       if (!resp.isError && resp.type && resp.type.kind === "object") {
-        html += '<div class="section"><div class="section-title">返回参数</div>\n';
+        const label = op.responses.filter(r => !r.isError).length > 1
+          ? `返回参数 (${resp.statusCode})`
+          : "返回参数";
+        html += '<div class="section"><div class="section-title">' + label + '</div>\n';
         html += '<table class="param-table cols-4"><thead><tr><th class="col-field">字段名</th><th class="col-type">类型</th><th class="col-constraint">约束</th><th class="col-desc">说明</th></tr></thead><tbody>\n';
         html += generatePropertyRows(resp.type.properties, 0);
         html += "</tbody></table></div>";
-        break;
       }
     }
   } else {
