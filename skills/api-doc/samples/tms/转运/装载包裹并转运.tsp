@@ -3,8 +3,6 @@ import "../models.tsp";
 
 using TypeSpec.Http;
 
-namespace TMS;
-
 model PostTransportRequest extends HualeiRequest {
     @doc("请求接口名称")
     apiName: "hy_tms_post_transport_WebApi";

@@ -3,7 +3,6 @@ import "../models.tsp";
 
 using TypeSpec.Http;
 
-namespace TMS;
 
 @doc("转运任务创建消息")
 @topic("tms.task.events")
