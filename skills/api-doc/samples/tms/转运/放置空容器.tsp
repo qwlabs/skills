@@ -1,7 +1,8 @@
 import "@typespec/http";
-import "./models.tsp";
+import "../models.tsp";
 
 using TypeSpec.Http;
+namespace TMS;
 
 model StationLayContainerRequest extends HualeiRequest {
     @doc("请求接口名称")
@@ -14,7 +15,7 @@ model StationLayContainerRequest extends HualeiRequest {
     };
 }
 
-// Scene: 用户可以在列表页面点击「装载」按钮，对单个站点发起装载请求。系统会自动锁定站点，防止并发操作。如果站点已有容器，会返回错误。
+
 @doc("用户可以在列表页面点击「装载」按钮，对单个站点发起装载请求。系统会自动锁定站点，防止并发操作。如果站点已有容器，会返回错误。")
 @route("/orbit/modeling/webApi")
 @post

@@ -60,9 +60,10 @@ op createUser(
 3. 子目录文件：使用直接父目录名
 
 接口名规则（优先级从高到低）：
-1. operation 上的 `@doc` 装饰器
-2. 文件名（去掉 `.tsp` 后缀，`index`/`main` 回退到 operation 名）
-3. operation 名
+1. 文件名（去掉 `.tsp` 后缀，`index`/`main` 回退到 operation 名）
+2. operation 名
+
+> 注：operation 上的 `@doc` 用作接口的**描述**（渲染在卡片内），不再用作接口名。接口名统一取文件名。
 
 多文件合并分组：在多个 `.tsp` 文件的 namespace 上声明相同的 `@doc` 值，即可将它们归入同一分组：
 
@@ -99,7 +100,7 @@ namespace TMS;
 
 | Decorator | 作用 | 示例 |
 |-----------|------|------|
-| `@doc("...")` | 描述文本，渲染为标题/说明 | `@doc("创建用户")` |
+| `@doc("...")` | 描述文本，渲染为接口/消息卡片内的说明 | `@doc("创建用户")` |
 | `@service(#{title: "..."})` | 服务名称，显示在侧边栏顶部 | `@service(#{title: "TMS"})` |
 | `@route("/...")` | API 路径 | `@route("/users/:id")` |
 | `@get` `@post` `@put` `@delete` `@patch` | HTTP 方法，渲染为彩色标签 | `@post` |
@@ -142,6 +143,39 @@ op createUser(@body body: Request): Response;
 - `returnType` — 响应数据
 - cURL 命令根据请求参数自动生成
 - 纯错误示例可省略 `parameters`
+
+## 消息示例（@example）
+
+`@example` 是 TypeSpec 标准库装饰器，可为 MQ 消息（`@topic` 标记的 model）添加 payload 示例。每个 `@example` 渲染为一个示例选项卡（单 JSON 面板 + 复制按钮）：
+
+```typespec
+@doc("任务状态变更消息")
+@topic("tms.task.events")
+@example(#{
+  taskId: "TASK-001",
+  status: ExecutionStatus.COMPLETED,
+  changedAt: "2026-06-17T10:00:00Z",
+  reason: "已送达"
+}, #{
+  title: "完成"    // 示例标题，显示为选项卡名（可选，默认"示例"）
+})
+model TaskStatusChangeMessage {
+  @doc("任务ID")
+  taskId: string;
+  @doc("新状态")
+  status: ExecutionStatus;
+  @doc("变更时间")
+  changedAt: datetime;
+  @doc("变更原因")
+  @optionalIf("status=COMPLETED")
+  reason?: string;
+}
+```
+
+- 同一消息可添加多个 `@example`，每个渲染为一个选项卡
+- 值会原样序列化为 JSON 渲染；枚举成员（如 `ExecutionStatus.COMPLETED`）自动转为成员名（`"COMPLETED"`）
+- `title`（或 `description`）作为选项卡名，省略时默认显示"示例"
+- `@example` 与 `@opExample` 区别：`@example` 描述单个数据值（适用于 model/消息），`@opExample` 描述 operation 的请求-响应对
 
 ## 模型继承与嵌套
 
@@ -258,7 +292,7 @@ my-api/
 ### 定义消息
 
 ```typespec
-@doc("转运任务创建消息")
+@doc("当转运任务创建时发出此消息")
 @topic("tms.task.events")
 model TaskCreateMessage {
   @doc("任务ID")
@@ -269,7 +303,7 @@ model TaskCreateMessage {
 ```
 
 - `@topic("...")` — 必填，指定消息的 Topic 名称
-- `@doc("...")` — 消息标题
+- `@doc("...")` — 消息描述（渲染在卡片内）。消息**标题**统一取所在文件名（去掉 `.tsp`），与 HTTP 接口一致；一条消息一个 `.tsp` 文件
 - 字段定义与 HTTP model 相同，支持所有约束装饰器
 - 支持所有 HTTP model 的特性：`@opExample`、`@added`/`@removed`、`#deprecated`、嵌套对象等
 
@@ -287,8 +321,9 @@ HTTP 接口和 MQ 消息在同一目录下会合并到同一分组。
 ```
 my-api/
 ├── 转运/
-│   ├── 装载包裹.tsp        # HTTP 接口
-│   └── 装载消息.tsp        # MQ 消息（@topic）
+│   ├── 装载包裹.tsp        # HTTP 接口（标题=文件名“装载包裹”）
+│   ├── 转运任务创建消息.tsp  # MQ 消息（标题=文件名“转运任务创建消息”）
+│   └── 任务状态变更消息.tsp  # MQ 消息（标题=文件名“任务状态变更消息”）
 └── 查询/
     └── 分页查询.tsp        # HTTP 接口
 ```

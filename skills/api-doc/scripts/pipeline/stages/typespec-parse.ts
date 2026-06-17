@@ -82,7 +82,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     });
 
     const errors = program.diagnostics.filter(
-      (d) => d.severity === "error" && d.code !== "invalid-ref"
+      (d) => d.severity === "error" && d.code !== "invalid-ref" && d.code !== "import-not-found"
     );
     if (errors.length > 0) {
       const msgs = errors.map((d) => String(d.message)).join("\n");
@@ -99,6 +99,19 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const service = services[0];
   if (!service) {
     throw new Error("No HTTP service found in TypeSpec files");
+  }
+
+  // 兜底：带 @route 的 HTTP 操作必须归属 @service 标记的 namespace，
+  // 否则 getAllHttpServices 会静默丢弃它们，产出没有接口的空文档。
+  // 最常见的成因是定义操作的 .tsp 文件漏写了 "namespace <Name>;" 声明。
+  const orphanedOps = findOrphanedRouteOps(program);
+  if (orphanedOps.length > 0) {
+    const list = orphanedOps.map((o) => `${o.name} (in ${o.file})`).join(", ");
+    throw new Error(
+      `HTTP operation(s) with @route are outside the @service namespace and would be dropped: ${list}.\n` +
+        `Likely cause: the .tsp file is missing a "namespace <Name>;" declaration that matches @service. ` +
+        `Add it so the operation is collected into the service.`
+    );
   }
 
   const serviceNs = service.namespace;
@@ -238,6 +251,33 @@ function getOperationNamespace(op: TspOperation): Namespace | undefined {
   let current = (op as any).namespace;
   if (current && current.kind === "Namespace") return current;
   return undefined;
+}
+
+// 查找游离到全局 namespace、却带 @route 的操作。
+// 这类操作不会被 getAllHttpServices 收集，是 .tsp 漏写 namespace 声明的典型症状。
+function findOrphanedRouteOps(program: Program): { name: string; file: string }[] {
+  const globalNs = program.checker.getGlobalNamespaceType();
+  const orphaned: { name: string; file: string }[] = [];
+  for (const [name, op] of globalNs.operations) {
+    const node = (op as any).node;
+    const hasRoute = node?.decorators?.some((dec: any) => {
+      const targetName = dec.target?.sv || dec.target?.id?.sv;
+      return targetName === "route";
+    });
+    if (hasRoute) {
+      orphaned.push({ name, file: node?.parent?.file?.path ?? "<unknown>" });
+    }
+  }
+  return orphaned;
+}
+
+// 从文件路径推导标题：取 basename 去掉 .tsp 后缀。
+// index.tsp / main.tsp 这类入口文件回退到 undefined（由调用方继续兜底）。
+function deriveTitleFromFilePath(filePath: string): string | undefined {
+  const basename = filePath.split("/").pop() || "";
+  const name = basename.replace(/\.tsp$/, "");
+  if (name === "index" || name === "main") return undefined;
+  return name;
 }
 
 function groupOperationsByFile(
@@ -547,6 +587,24 @@ function extractDocExamples(target: Type): import("../types").ApiExample[] {
   return examples;
 }
 
+// 从标准 @example 装饰器提取示例值，用于 model / message。
+// 与 @opExample 不同：@example 是单个数据值（非 parameters/returnType），
+// 整体作为示例 JSON 渲染（只填 response，不填 request/curlCommand）。
+function extractExampleDecorator(target: Type): import("../types").ApiExample[] {
+  const examples: import("../types").ApiExample[] = [];
+  for (const dec of (target as any).decorators || []) {
+    const decName = dec.definition?.name;
+    if (decName === "@example" && dec.args.length >= 1) {
+      const value = dec.args[0].jsValue;
+      const options = dec.args[1]?.jsValue as Record<string, unknown> | undefined;
+      const name = String(options?.title || options?.description || "示例");
+      const response = value !== undefined ? JSON.stringify(deepCloneValue(value), null, 2) : "{}";
+      examples.push({ name, response });
+    }
+  }
+  return examples;
+}
+
 function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
   if (val === null || val === undefined) return val;
   if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return val;
@@ -557,6 +615,17 @@ function deepCloneValue(val: unknown, seen: Set<unknown> = new Set()): unknown {
   if (obj.kind === "EnumMember" && typeof obj.name === "string") return obj.name;
   if (obj.valueKind === "EnumValue" && obj.value && typeof (obj.value as any).name === "string") {
     return (obj.value as any).name;
+  }
+  // ScalarValue（如 utcDateTime.fromISO("...")）：序列化为构造器的字面量值。
+  // 形如 { valueKind: "ScalarValue", value: { name: "fromISO", args: [{ valueKind: "StringValue", value: "2026-..." }] } }
+  if (obj.valueKind === "ScalarValue" && obj.value) {
+    const scalar = obj.value as any;
+    const args = (scalar.args ?? []) as any[];
+    for (const arg of args) {
+      if (arg.valueKind === "StringValue" && typeof arg.value === "string") {
+        return arg.value;
+      }
+    }
   }
   if (Array.isArray(val)) {
     return val.map((item) => deepCloneValue(item, seen));
@@ -597,12 +666,15 @@ function extractMessagesByFile(
       ? deriveGroupNameFromPath(filePath, inputDir)
       : "默认";
 
-    const doc = getDoc(program, model) || name;
+    // 标题统一取文件名（去 .tsp），与 HTTP 接口一致；@doc 仅作为描述。
+    const title = filePath ? deriveTitleFromFilePath(filePath) : name;
+    const description = getDoc(program, model) || undefined;
     const versionTags = extractVersionTags(model as any);
     const deprecation = getDeprecationDetails(program, model as any) ?? undefined;
     const payload = resolveType(program, model);
-    const examples = extractDocExamples(model as any);
+    const examples = extractExampleDecorator(model as any);
 
+    // 锚点 id 保持用 model 名（比文件名更稳定，且同文件多消息不冲突）。
     const id = `msg-${groupName}-${name}`.replace(/[^\-a-zA-Z0-9一-鿿]/g, "-");
 
     if (!result.has(groupName)) {
@@ -610,9 +682,9 @@ function extractMessagesByFile(
     }
     result.get(groupName)!.push({
       id,
-      name,
+      name: title,
       topic,
-      description: doc !== name ? doc : undefined,
+      description,
       payload: payload.kind === "object" ? payload : undefined,
       examples,
       versionTags,

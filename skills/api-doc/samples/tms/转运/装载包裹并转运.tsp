@@ -2,6 +2,7 @@ import "@typespec/http";
 import "../models.tsp";
 
 using TypeSpec.Http;
+namespace TMS;
 
 model PostTransportRequest extends HualeiRequest {
     @doc("请求接口名称")

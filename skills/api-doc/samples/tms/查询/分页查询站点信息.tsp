@@ -2,6 +2,7 @@ import "@typespec/http";
 import "../models.tsp";
 
 using TypeSpec.Http;
+namespace TMS;
 
 model PageQueryStationsCondition {
   @doc("所属车间编码")
