@@ -174,7 +174,7 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
 
   // Examples
   if (data.examples.length > 0) {
-    html += generateExampleSection(data.id, data.examples);
+    html += generateExampleSection(data.id, data.examples, protocol);
   }
 
   // Error responses (http only)

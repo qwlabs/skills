@@ -2,7 +2,7 @@
 import type { ApiExample } from "../types";
 import { escapeHtml } from "./html-helpers";
 
-export function generateExampleSection(opId: string, examples: ApiExample[]): string {
+export function generateExampleSection(opId: string, examples: ApiExample[], protocol: "http" | "mq"): string {
   let html = '<div class="example-section">\n';
   html += '<div class="example-section-title">示例</div>\n';
 
@@ -21,27 +21,32 @@ export function generateExampleSection(opId: string, examples: ApiExample[]): st
     const paneCls = i === 0 ? ' class="example-pane active"' : ' class="example-pane"';
     html += `<div${paneCls} id="ex-${opId}-${i}">\n`;
     html += '<div class="example-card">\n';
-    html += '<div class="example-card-header">\n';
     const hasRequest = ex.request != null && ex.request !== undefined;
     const hasCurl = !!ex.curlCommand;
-    if (hasRequest) {
-      const firstTabActive = ' class="example-card-tab tab-request active"';
-      const resCls = ' class="example-card-tab tab-response"';
-      const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
-      html += `<button${firstTabActive} onclick="switchCardTab(this, 'req-${opId}-${i}')">请求数据</button>\n`;
-      html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
-      if (hasCurl) {
-        html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
+    // MQ 消息示例只有一个值，不再渲染「请求数据/返回数据」的 tab 区分，直接平铺显示。
+    // HTTP 接口示例始终保留 tab（至少返回数据；有请求则三 tab）。
+    const singlePane = protocol === "mq";
+    if (!singlePane) {
+      html += '<div class="example-card-header">\n';
+      if (hasRequest) {
+        const firstTabActive = ' class="example-card-tab tab-request active"';
+        const resCls = ' class="example-card-tab tab-response"';
+        const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
+        html += `<button${firstTabActive} onclick="switchCardTab(this, 'req-${opId}-${i}')">请求数据</button>\n`;
+        html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
+        if (hasCurl) {
+          html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
+        }
+      } else {
+        const resCls = ' class="example-card-tab tab-response active"';
+        const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
+        html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
+        if (hasCurl) {
+          html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
+        }
       }
-    } else {
-      const resCls = ' class="example-card-tab tab-response active"';
-      const curlCls = hasCurl ? ' class="example-card-tab tab-curl"' : '';
-      html += `<button${resCls} onclick="switchCardTab(this, 'res-${opId}-${i}')">返回数据</button>\n`;
-      if (hasCurl) {
-        html += `<button${curlCls} onclick="switchCardTab(this, 'curl-${opId}-${i}')">cURL</button>\n`;
-      }
+      html += '</div>\n';
     }
-    html += '</div>\n';
 
     html += '<div class="example-card-body">\n';
 

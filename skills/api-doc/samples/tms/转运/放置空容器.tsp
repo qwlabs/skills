@@ -4,15 +4,18 @@ import "../models.tsp";
 using TypeSpec.Http;
 namespace TMS;
 
+model StationLayContainer {
+  @doc("放置站点")
+  @minItems(1)
+  stationCodes: string[];
+  ... Record<Any>;
+}
+
 model StationLayContainerRequest extends HualeiRequest {
     @doc("请求接口名称")
     apiName: "hy_tms_station_lay_container_WebApi";
     @doc("请求数据")
-    data: {
-      @doc("放置站点")
-      @minItems(1)
-      stationCodes: string[];
-    };
+    data: StationLayContainer;
 }
 
 
@@ -24,7 +27,7 @@ model StationLayContainerRequest extends HualeiRequest {
     body: #{
       outType: "json",
       apiName: "hy_tms_station_lay_container_WebApi",
-      data: #{ stationCodes: #["A1_10__001"] }
+      data: #{ stationCodes: #["A1_10__001"], s1: "s1", f1: 3.4 }
     }
   },
   returnType: #{

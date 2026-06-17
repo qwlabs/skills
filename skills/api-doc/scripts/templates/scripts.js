@@ -64,7 +64,8 @@ function switchExampleTab(btn,paneId){
     document.getElementById(paneId).classList.add('active');
     var pane=document.getElementById(paneId);
     pane.querySelectorAll('.example-card-tab').forEach(function(t){t.classList.remove('active')});
-    pane.querySelector('.tab-request').classList.add('active');
+    var reqTab=pane.querySelector('.tab-request');
+    if(reqTab){reqTab.classList.add('active')}
     pane.querySelectorAll('.example-card-content').forEach(function(c){c.classList.remove('active')});
     pane.querySelector('.example-card-content').classList.add('active')
 }
