@@ -1,7 +1,6 @@
 // pipeline/emit/html-props.ts
-import { render } from "./loader";
 import type { ApiParameter, ApiProperty, ApiConstraints } from "../types";
-import { escapeHtml, formatType, formatEnumDoc, formatConstraints } from "./html-helpers";
+import { escapeHtml, formatType, formatEnumDoc, formatConstraints, renderBadge } from "./html-helpers";
 
 export function generateParameterRow(param: ApiParameter): string {
   const typeDisplay = formatType(param.type);
@@ -35,7 +34,7 @@ export function generatePropertyRows(properties: ApiProperty[], level: number): 
     for (const vt of prop.versionTags) {
       const label =
         vt.type === "added" ? `+${vt.version}` : `-${vt.version}`;
-      versionHtml += ` ${render("badge", label)}`;
+      versionHtml += ` ${renderBadge(label)}`;
     }
 
     const docHtml = escapeHtml(prop.doc || "") + formatEnumDoc(prop.type);

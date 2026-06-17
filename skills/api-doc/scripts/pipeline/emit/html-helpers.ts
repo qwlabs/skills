@@ -15,6 +15,32 @@ export function slugify(text: string): string {
   return text.replace(/[^\-a-zA-Z0-9一-鿿]/g, "-");
 }
 
+// --- Inline render snippets ---
+// 内联的渲染片段(原 loader 注册表里的 badge / tag / code 插件)。
+// 转义统一走 escapeHtml,全仓库一份。
+
+export function renderInlineCode(value: string): string {
+  return `<code class="inline-code">${escapeHtml(value)}</code>`;
+}
+
+const TAG_COLOR_VAR: Record<string, string> = {
+  GET: "var(--doc-tag-get)",
+  POST: "var(--doc-tag-post)",
+  PUT: "var(--doc-tag-put)",
+  DELETE: "var(--doc-tag-delete)",
+  PATCH: "var(--doc-tag-patch)",
+  MQ: "var(--doc-tag-mq)",
+};
+
+export function renderTag(value: string): string {
+  const color = TAG_COLOR_VAR[value.toUpperCase()] ?? "var(--doc-tag-default)";
+  return `<span class="tag" style="background-color:${color};color:var(--doc-tag-text);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${escapeHtml(value)}</span>`;
+}
+
+export function renderBadge(value: string): string {
+  return `<span class="badge" style="background-color:var(--doc-badge-bg);color:var(--doc-badge-text)">${escapeHtml(value)}</span>`;
+}
+
 export function formatType(type: ApiType): string {
   switch (type.kind) {
     case "string":

@@ -96,12 +96,9 @@ api-doc/
         │   └── asset-load.ts        # 资源加载
         └── emit/
             ├── html-emit.ts        # HTML 序列化主逻辑
-            ├── html-helpers.ts     # escapeHtml, formatType, markdown 转换等
+            ├── html-helpers.ts     # escapeHtml, formatType, markdown 转换, 内联渲染片段 (renderTag/renderBadge/renderInlineCode)
             ├── html-props.ts       # 参数/属性表格渲染
-            ├── html-examples.ts    # 示例区块渲染
-            ├── loader.ts           # 渲染插件注册表
-            ├── base.ts             # RenderFn 接口
-            └── *.ts                # 渲染插件（badge, tag, code, link, copy, text）
+            └── html-examples.ts    # 示例区块渲染
     ├── templates/
     │   ├── template.html # HTML 骨架（{{title}} 等占位符）
     │   ├── styles.css    # CSS（内联到输出）
@@ -176,10 +173,8 @@ Stage 间通过 `DataKey` 声明数据依赖。可用的 key：
 2. 读取 `model.sidebar`、`model.sections`，按目标格式序列化
 3. 将结果写入 `model.assets.finalOutput`
 
-### 添加新渲染插件
-
-1. 在 `pipeline/emit/` 下创建文件，实现 `RenderFn` 接口（参见 `base.ts`）
-2. 在 `loader.ts` 的 `renderMap` 中注册
+> 内联渲染片段（`renderTag` / `renderBadge` / `renderInlineCode`）定义在 `html-helpers.ts`。
+> 这些是 HTML 专用的具名函数，不再有插件注册表。需要新的输出格式时，直接编写该格式自己的渲染逻辑即可。
 
 ### 添加新主题
 

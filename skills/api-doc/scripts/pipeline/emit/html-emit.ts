@@ -1,10 +1,9 @@
 // pipeline/emit/html-emit.ts
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { render } from "./loader";
 import type { DagStage, StageContext, SidebarEntry, ContentSection, ProtocolKind } from "../types";
 import type { ApiOperation, MessageDefinition } from "../types";
-import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge } from "./html-helpers";
+import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge, renderTag, renderInlineCode, renderBadge } from "./html-helpers";
 import { generateParameterRow, generatePropertyRows } from "./html-props";
 import { generateExampleSection } from "./html-examples";
 
@@ -98,16 +97,16 @@ function renderDocCard(data: ApiOperation | MessageDefinition, protocol: Protoco
   html += '<div class="meta-section">\n';
   if (protocol === "http") {
     const op = data as ApiOperation;
-    html += `<div class="meta-block"><span class="meta-label">方法</span><span class="meta-value">${render("tag", op.verb.toUpperCase())}</span></div>\n`;
-    html += `<div class="meta-block"><span class="meta-label">路径</span><span class="meta-value">${render("code", op.path)}</span></div>\n`;
+    html += `<div class="meta-block"><span class="meta-label">方法</span><span class="meta-value">${renderTag(op.verb.toUpperCase())}</span></div>\n`;
+    html += `<div class="meta-block"><span class="meta-label">路径</span><span class="meta-value">${renderInlineCode(op.path)}</span></div>\n`;
   } else {
     const msg = data as MessageDefinition;
-    html += `<div class="meta-block meta-block-wide"><span class="meta-label">Topic</span><span class="meta-value">${render("code", msg.topic)}</span></div>\n`;
+    html += `<div class="meta-block meta-block-wide"><span class="meta-label">Topic</span><span class="meta-value">${renderInlineCode(msg.topic)}</span></div>\n`;
   }
   if (data.versionTags.length > 0) {
     for (const vt of data.versionTags) {
       const label = vt.type === "added" ? `Added in ${vt.version}` : `Removed in ${vt.version}`;
-      html += `<div class="meta-block"><span class="meta-value">${render("badge", label)}</span></div>\n`;
+      html += `<div class="meta-block"><span class="meta-value">${renderBadge(label)}</span></div>\n`;
     }
   }
   html += "</div>\n";
