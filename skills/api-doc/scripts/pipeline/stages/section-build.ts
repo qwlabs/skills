@@ -3,7 +3,7 @@ import { slugify } from "../emit/html-helpers";
 
 export const sectionBuild: DagStage = {
   name: "section-build",
-  requires: ["doc.api", "doc.snippets", "doc.curl"],
+  requires: ["doc.api", "doc.snippets", "doc.curl", "doc.revision"],
   provides: ["model.sections"],
   process(ctx: StageContext): void {
     const sections: ContentSection[] = [];
@@ -25,7 +25,7 @@ export const sectionBuild: DagStage = {
       sections.push({ kind: "snippet", anchorId: `snippet-footer-${slugify(snippet.name)}`, title: snippet.name, content: snippet.content });
     }
 
-    sections.push({ kind: "footer", version: "{{version}}" });
+    sections.push({ kind: "footer", version: ctx.doc.revision });
 
     ctx.model.sections = sections;
   },

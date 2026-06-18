@@ -41,14 +41,15 @@ import type {
   StageContext,
 } from "../types";
 import { resolveScalarBase, deepCloneValue, isErrorResponse } from "../type-primitives";
+import { buildRevision } from "../revision";
 
 export const typespecParse: DagStage = {
   name: "typespec-parse",
   requires: [],
-  provides: ["doc.api", "model.meta"],
+  provides: ["doc.api", "doc.revision"],
   async process(ctx: StageContext): Promise<void> {
     const inputDir = resolve(ctx.config.inputDir);
-    const doc = await parseTypeSpecDir(inputDir);
+    const doc = await parseTypeSpecDir(inputDir, ctx.config.now);
 
     ctx.doc.title = doc.title;
     ctx.doc.version = doc.version;
@@ -57,15 +58,14 @@ export const typespecParse: DagStage = {
     ctx.doc.groups = doc.groups;
     ctx.doc.headerSnippets = doc.headerSnippets;
     ctx.doc.footerSnippets = doc.footerSnippets;
-    ctx.model.meta.title = doc.title;
-    ctx.model.meta.version = doc.version;
+    ctx.doc.revision = doc.revision;
   },
 };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(__dirname, "../../..");
 
-async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
+async function parseTypeSpecDir(inputDir: string, now: Date): Promise<ParsedApiDoc> {
   const mainFile = findMainFile(inputDir);
   const linkPath = join(inputDir, "node_modules");
   const targetPath = join(SKILL_ROOT, "node_modules");
@@ -118,6 +118,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
   const serviceNs = service.namespace;
   const title = getServiceTitle(serviceNs) || serviceNs.name || "API";
   const version = readVersionFromConfig(inputDir) || getServiceVersion(serviceNs) || "";
+  const revision = buildRevision(version, now);
 
   const opSourceFile = buildOpSourceFile(program, service.operations, inputDir);
   const operationMap = groupOperationsByFile(service.operations, opSourceFile);
@@ -141,7 +142,7 @@ async function parseTypeSpecDir(inputDir: string): Promise<ParsedApiDoc> {
     }
   }
 
-  return { title, version, groups, headerSnippets: [], footerSnippets: [] };
+  return { title, version, revision, groups, headerSnippets: [], footerSnippets: [] };
   } finally {
     if (createdLink) {
       try { rmSync(linkPath, { recursive: true, force: true }); } catch { /* ignore */ }

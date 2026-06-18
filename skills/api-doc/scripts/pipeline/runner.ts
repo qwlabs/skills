@@ -3,7 +3,6 @@ import type { DagStage, DataKey, StageContext, StageConfig, DocumentModel, Parse
 
 function createModel(): DocumentModel {
   return {
-    meta: { title: "", version: "" },
     sidebar: [],
     sections: [],
     assets: { styles: "", scripts: "", hljsThemeCSS: "", hljsBundle: "", finalOutput: "" },
@@ -17,6 +16,7 @@ export async function runPipeline(
   const doc: ParsedApiDoc = {
     title: "",
     version: "",
+    revision: "",
     headerSnippets: [],
     footerSnippets: [],
     groups: [],

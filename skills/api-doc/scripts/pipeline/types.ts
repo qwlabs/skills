@@ -8,6 +8,7 @@ export interface ParsedApiDoc {
   version: string;
   description?: string;
   baseUrl?: string;
+  revision: string;
   headerSnippets: MarkdownSnippet[];
   footerSnippets: MarkdownSnippet[];
   groups: ApiGroup[];
@@ -135,7 +136,6 @@ export type ProtocolKind = "http" | "mq";
 // --- Document Model ---
 
 export interface DocumentModel {
-  meta: { title: string; version: string };
   sidebar: SidebarEntry[];
   sections: ContentSection[];
   assets: DocumentAssets;
@@ -168,10 +168,10 @@ export interface DocumentAssets {
 export type DataKey =
   | "doc.api"            // ParsedApiDoc 的核心数据 (groups, title, version...)
   | "doc.snippets"       // headerSnippets + footerSnippets
+  | "doc.revision"       // doc.revision（带时间戳，由 parse 计算）
   | "doc.curl"           // operations[].curlCommand + examples[].curlCommand
   | "model.sidebar"      // model.sidebar
   | "model.sections"     // model.sections
-  | "model.meta"         // model.meta
   | "model.assets"       // model.assets (styles, scripts, hljs, finalOutput)
   | "model.output";      // model.assets.finalOutput
 
@@ -197,5 +197,5 @@ export interface StageConfig {
   inputDir: string;
   templateDir: string;
   themeCSS?: string;
-  version: string;
+  now: Date;
 }

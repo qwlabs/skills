@@ -16,13 +16,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const stages: DagStage[] = [typespecParse, snippetInject, curlGenerate, sidebarBuild, sectionBuild, assetLoad, htmlEmit];
 
-function buildRevision(version: string): string {
-  const now = new Date();
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}`;
-  return version ? `${version}-${ts}` : ts;
-}
-
 function resolveTheme(themeName: string | undefined, themeFile: string | undefined, templateDir: string): string | undefined {
   if (themeFile) {
     if (!existsSync(themeFile)) {
@@ -89,9 +82,10 @@ async function main() {
   const templateDir = join(__dirname, "templates");
   const themeCSS = resolveTheme(themeName, themeFile, templateDir);
 
-  const model = await runPipeline(stages, { inputDir, templateDir, themeCSS, version: "" });
+  const now = new Date();
+  const model = await runPipeline(stages, { inputDir, templateDir, themeCSS, now });
 
-  const revision = buildRevision(model.meta.version);
+  const revision = model.sections.find((s): s is { kind: "footer"; version: string } => s.kind === "footer")?.version ?? "";
 
   // 打印操作列表
   let totalOps = 0;
@@ -113,9 +107,7 @@ async function main() {
   const outputPath = positional[1] || join(dirname(resolve(inputDir)), `${inputDirName}-${revision}.html`);
   console.log("Writing: " + outputPath);
 
-  // 替换模板中的版本号（pipeline 用空 version 运行，这里替换为含时间戳的 revision）
-  const output = model.assets.finalOutput.replace(/\{\{version\}\}/g, revision);
-  writeFileSync(outputPath, output, "utf-8");
+  writeFileSync(outputPath, model.assets.finalOutput, "utf-8");
   console.log("Done! Revision: " + revision);
 }
 

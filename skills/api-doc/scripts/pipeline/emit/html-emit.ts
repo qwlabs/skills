@@ -17,7 +17,7 @@ const PROTOCOL_META: Record<ProtocolKind, {
 
 export const htmlEmit: DagStage = {
   name: "html-emit",
-  requires: ["model.sidebar", "model.sections", "model.assets", "model.meta"],
+  requires: ["model.sidebar", "model.sections", "model.assets", "doc.api", "doc.revision"],
   provides: ["model.output"],
   process(ctx: StageContext): void {
     const template = loadTemplate(ctx.config.templateDir);
@@ -29,7 +29,8 @@ export const htmlEmit: DagStage = {
       .replace("{{hljs}}", ctx.model.assets.hljsBundle)
       .replace("{{styles}}", ctx.model.assets.styles)
       .replace("{{scripts}}", ctx.model.assets.scripts)
-      .replace(/\{\{title\}\}/g, escapeHtml(ctx.model.meta.title))
+      .replace(/\{\{title\}\}/g, escapeHtml(ctx.doc.title))
+      .replace(/\{\{version\}\}/g, escapeHtml(ctx.doc.revision))
       .replace(/\{\{sidebar_content\}\}/g, sidebarHtml)
       .replace(/\{\{api_content\}\}/g, contentHtml);
   },
