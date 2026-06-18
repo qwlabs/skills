@@ -95,6 +95,8 @@ export function formatConstraints(c: ApiConstraints): string {
 }
 
 export function simpleMarkdownToHtml(md: string): string {
+  // Normalize line endings for cross-platform compatibility (Windows CRLF, old Mac CR)
+  md = md.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   let html = escapeHtml(md);
 
   // Code blocks: ```lang\n...\n```

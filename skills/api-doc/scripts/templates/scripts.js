@@ -15,7 +15,7 @@ function toggleSidebar(){
         floatingBtn.classList.remove('visible');
         inlineBtn.style.display='block'
     }
-    localStorage.setItem('sidebarCollapsed',isCollapsed)
+    try{localStorage.setItem('sidebarCollapsed',isCollapsed)}catch(e){}
 }
 function highlightToc(e){
     document.querySelectorAll('.toc-link').forEach(l=>l.classList.remove('active'));
@@ -39,7 +39,8 @@ const observer=new IntersectionObserver((entries)=>{
 document.querySelectorAll('.doc-card').forEach(s=>observer.observe(s));
 document.addEventListener('DOMContentLoaded',function(){
     document.querySelectorAll('pre code').forEach(function(block){hljs.highlightElement(block)});
-    const collapsed=localStorage.getItem('sidebarCollapsed')==='true';
+    var collapsed=false;
+    try{collapsed=localStorage.getItem('sidebarCollapsed')==='true'}catch(e){}
     const sidebar=document.querySelector('.sidebar');
     const main=document.querySelector('.main');
     const floatingBtn=document.querySelector('.sidebar-toggle-floating');
