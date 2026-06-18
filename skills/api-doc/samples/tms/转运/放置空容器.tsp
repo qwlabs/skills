@@ -8,7 +8,7 @@ model StationLayContainer {
   @doc("放置站点")
   @minItems(1)
   stationCodes: string[];
-  ... Record<Any>;
+  ... Record<unknown>;
 }
 
 model StationLayContainerRequest extends HualeiRequest {

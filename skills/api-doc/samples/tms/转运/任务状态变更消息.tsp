@@ -27,5 +27,5 @@ model TaskStatusChangeMessage {
   @doc("变更原因")
   @optionalIf("status=COMPLETED")
   reason?: string;
-  ... Record<Any>;
+  ... Record<unknown>;
 }

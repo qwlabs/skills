@@ -70,7 +70,7 @@ async function main() {
   }
 
   const inputDir = positional[0];
-  const inputDirName = inputDir.split("/").filter(Boolean).pop() || "output";
+  const inputDirName = inputDir.replace(/\\/g, "/").split("/").filter(Boolean).pop() || "output";
 
   if (!existsSync(inputDir)) {
     console.error("Input directory not found: " + inputDir);

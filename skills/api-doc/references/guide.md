@@ -201,6 +201,32 @@ model ListResponse {
 }
 ```
 
+## 扩展属性（任意额外字段）
+
+用 `... Record<T>` 表示「除已声明字段外，还允许任意额外键」，渲染为表格末尾一行扩展占位：
+
+```typespec
+model StationLayContainer {
+  @doc("放置站点")
+  stationCodes: string[];
+  ... Record<unknown>;
+}
+```
+
+渲染效果：
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| `stationCodes` | string[] | 必填 | 放置站点 |
+| `...` | any | | ... |
+
+约定：
+
+- 扩展占位行固定渲染为 `... | any | (空) | ...`
+- 只有当模型**既有显式字段、又有 Record spread** 时才会出现该行；纯 `Record<T>` 无显式字段时整体退化为 `T[]`
+- spread 语法本身不支持 `@doc` 装饰器，所以说明列恒为 `...`
+- `T` 应为 `unknown`（表示任意值）；不要写 `Any`，它不是内置类型会导致编译失败
+
 ## 枚举与联合类型
 
 ```typespec

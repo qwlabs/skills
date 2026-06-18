@@ -25,6 +25,18 @@ export function generateParameterRow(param: ApiParameter): string {
 export function generatePropertyRows(properties: ApiProperty[], level: number): string {
   let html = "";
   for (const prop of properties) {
+    // 扩展占位行（来自 `... Record<T>` spread）：固定渲染 ... | any | (空) | ...
+    if (prop.name === "...") {
+      const indentClass = "field-indent-" + Math.min(level, 10);
+      html +=
+        `<tr>` +
+        `<td class="field-name-cell ${indentClass}"><code class="field-name">...</code></td>` +
+        `<td><span class="field-type">any</span></td>` +
+        `<td class="constraint-cell"></td>` +
+        `<td>...</td>` +
+        `</tr>\n`;
+      continue;
+    }
     const indentClass = "field-indent-" + Math.min(level, 10);
     const typeDisplay = formatType(prop.type);
 

@@ -228,8 +228,9 @@ function buildOpSourceFile(
 }
 
 function deriveGroupNameFromPath(filePath: string, inputDir: string): string {
-  const normalizedInput = inputDir.replace(/\/+$/, "");
-  const normalizedFile = filePath.replace(/\/+$/, "");
+  // Windows 路径归一化为 posix，避免分隔符混用导致分组/标题错乱。
+  const normalizedInput = inputDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  const normalizedFile = filePath.replace(/\\/g, "/").replace(/\/+$/, "");
 
   if (!normalizedFile.startsWith(normalizedInput + "/") && normalizedFile !== normalizedInput) {
     const basename = normalizedFile.split("/").pop() || "";
@@ -276,7 +277,7 @@ function findOrphanedRouteOps(program: Program): { name: string; file: string }[
 // 从文件路径推导标题：取 basename 去掉 .tsp 后缀。
 // index.tsp / main.tsp 这类入口文件回退到 undefined（由调用方继续兜底）。
 function deriveTitleFromFilePath(filePath: string): string | undefined {
-  const basename = filePath.split("/").pop() || "";
+  const basename = filePath.replace(/\\/g, "/").split("/").pop() || "";
   const name = basename.replace(/\.tsp$/, "");
   if (name === "index" || name === "main") return undefined;
   return name;
@@ -382,7 +383,7 @@ function deriveOpNameFromPath(op: TspOperation, inputDir: string): string | unde
   const filePath: string | undefined = node?.parent?.file?.path;
   if (!filePath) return undefined;
 
-  const basename = filePath.split("/").pop() || "";
+  const basename = filePath.replace(/\\/g, "/").split("/").pop() || "";
   const name = basename.replace(/\.tsp$/, "");
   if (name === "index" || name === "main") return undefined;
   return name;
@@ -406,12 +407,6 @@ function resolveType(program: Program, type: Type): ApiType {
     case "Model": {
       if (isTemplateDeclaration(type)) {
         return { kind: "any" };
-      }
-      if (type.indexer) {
-        return {
-          kind: "array",
-          elementType: resolveType(program, type.indexer.value),
-        };
       }
       const properties: ApiProperty[] = [];
       const allProps = collectInheritedProperties(type);
@@ -437,6 +432,23 @@ function resolveType(program: Program, type: Type): ApiType {
           conditionalOptional: extractOptionalIf(prop),
           constraints: extractConstraints(program, prop),
           versionTags: extractVersionTags(prop),
+        });
+      }
+      // indexer 来自 `... Record<T>` 之类的 spread：无显式属性时退化为数组，
+      // 否则保留显式字段并追加一行扩展占位（`...`），表示还允许任意额外键。
+      if (type.indexer) {
+        if (properties.length === 0) {
+          return {
+            kind: "array",
+            elementType: resolveType(program, type.indexer.value),
+          };
+        }
+        properties.push({
+          name: "...",
+          type: { kind: "any" },
+          required: false,
+          constraints: {},
+          versionTags: [],
         });
       }
       return { kind: "object", name: type.name, properties };
