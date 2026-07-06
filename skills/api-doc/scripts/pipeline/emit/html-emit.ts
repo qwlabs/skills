@@ -23,11 +23,17 @@ export const htmlEmit: DagStage = {
     const template = loadTemplate(ctx.config.templateDir);
     const sidebarHtml = renderSidebar(ctx.model.sidebar);
     const contentHtml = renderSections(ctx.model.sections);
+    // 在 styles.css 的 :root 块里追加 --sidebar-w（首帧 placeholder，运行时 JS 覆盖）。
+    const sidebarVar = `--sidebar-w:${Math.round(ctx.model.sidebarWidth)}px;`;
+    const stylesWithVar = ctx.model.assets.styles.replace(
+      ":root{",
+      `:root{${sidebarVar}`,
+    );
 
     ctx.model.assets.finalOutput = template
       .replace("{{hljs_theme}}", ctx.model.assets.hljsThemeCSS)
       .replace("{{hljs}}", ctx.model.assets.hljsBundle)
-      .replace("{{styles}}", ctx.model.assets.styles)
+      .replace("{{styles}}", stylesWithVar)
       .replace("{{scripts}}", ctx.model.assets.scripts)
       .replace(/\{\{title\}\}/g, escapeHtml(ctx.doc.title))
       .replace(/\{\{version\}\}/g, escapeHtml(ctx.doc.revision))

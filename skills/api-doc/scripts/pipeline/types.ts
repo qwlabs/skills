@@ -137,6 +137,8 @@ export type ProtocolKind = "http" | "mq";
 
 export interface DocumentModel {
   sidebar: SidebarEntry[];
+  // 侧边栏默认宽度估算值（px，首帧 placeholder），由 sidebar-build 阶段产出。
+  sidebarWidth: number;
   sections: ContentSection[];
   assets: DocumentAssets;
 }

@@ -4,6 +4,7 @@ import type { DagStage, DataKey, StageContext, StageConfig, DocumentModel, Parse
 function createModel(): DocumentModel {
   return {
     sidebar: [],
+    sidebarWidth: 0,
     sections: [],
     assets: { styles: "", scripts: "", hljsThemeCSS: "", hljsBundle: "", finalOutput: "" },
   };
