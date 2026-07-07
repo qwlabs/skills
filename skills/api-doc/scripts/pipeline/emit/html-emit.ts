@@ -4,7 +4,7 @@ import { join } from "path";
 import type { DagStage, StageContext, SidebarEntry, ContentSection, ProtocolKind } from "../types";
 import type { ApiOperation, MessageDefinition } from "../types";
 import { escapeHtml, simpleMarkdownToHtml, buildFooterBadge, renderTag, renderInlineCode, renderBadge } from "./html-helpers";
-import { generateParameterRow, generatePropertyRows } from "./html-props";
+import { generateParameterRow, generatePropertyRows, resetUnionGroupSeq } from "./html-props";
 import { generateExampleSection } from "./html-examples";
 
 const PROTOCOL_META: Record<ProtocolKind, {
@@ -96,6 +96,7 @@ function renderSections(sections: ContentSection[]): string {
 function renderDocCard(data: ApiOperation | MessageDefinition, protocol: ProtocolKind): string {
   const meta = PROTOCOL_META[protocol];
   let html = "";
+  resetUnionGroupSeq();
 
   html += `<section class="doc-card" id="${data.id}">\n`;
   html += `<div class="api-title">${escapeHtml(data.name)}<span class="api-title-tag" style="background-color:${meta.tagColor}">${meta.tagLabel}</span></div>\n`;

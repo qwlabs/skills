@@ -451,7 +451,7 @@ function resolveType(program: Program, type: Type): ApiType {
           versionTags: [],
         });
       }
-      return { kind: "object", name: type.name, properties };
+      return { kind: "object", name: type.name, doc: getDoc(program, type) || undefined, properties };
     }
     case "Enum": {
       const members: { name: string; value?: string | number; doc?: string }[] = [];

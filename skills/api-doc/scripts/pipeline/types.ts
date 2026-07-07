@@ -99,7 +99,7 @@ export type ApiType =
   | { kind: "enum"; name?: string; members: { name: string; value?: string | number; doc?: string }[] }
   | { kind: "union"; variants: ApiType[] }
   | { kind: "array"; elementType: ApiType }
-  | { kind: "object"; name?: string; properties: ApiProperty[] }
+  | { kind: "object"; name?: string; doc?: string; properties: ApiProperty[] }
   | { kind: "scalar"; name: string; baseType: ApiType };
 
 export interface ApiProperty {

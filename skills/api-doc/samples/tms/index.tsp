@@ -5,6 +5,8 @@ import "./转运/装载包裹并转运.tsp";
 import "./查询/分页查询站点信息.tsp";
 import "./转运/任务状态变更消息.tsp";
 import "./转运/转运任务创建消息.tsp";
+import "./转运/多个参数.tsp";
+import "./转运/多联合.tsp";
 
 using TypeSpec.Http;
 

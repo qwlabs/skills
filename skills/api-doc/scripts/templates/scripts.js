@@ -182,4 +182,25 @@ window.copyCard = function(btn){
     setTimeout(function(){ btn.textContent = '复制'; }, 1500);
   });
 };
+// ===== 联合类型变体 tab（union payload） =====
+// 同页可能有多处 union（不同接口的 payload），用 data-union-variant "<gid>-<i>" 隔离。
+// 点 tab → 同卡片内同 gid 的 .union-variant 按 i 匹配切换可见。事件委托到 document。
+document.addEventListener('click', function(e){
+  var btn = e.target.closest && e.target.closest('.union-tab');
+  if(!btn || !btn.dataset.unionVariant) return;
+  var key = btn.dataset.unionVariant;                          // "<gid>-<i>"
+  var gid = key.split('-')[0];
+  var host = btn.closest('[data-union-tabs]');
+  host.querySelectorAll('.union-tab').forEach(function(t){
+    t.classList.toggle('active', t === btn);
+  });
+  var card = btn.closest('.doc-card');
+  if(!card) return;
+  card.querySelectorAll('.union-variant').forEach(function(r){
+    var sameGroup = r.dataset.unionGroup && r.dataset.unionGroup.split('-')[0] === gid;
+    if(!sameGroup) return;
+    r.classList.toggle('active', r.dataset.unionGroup === key);
+  });
+});
+
 })();
