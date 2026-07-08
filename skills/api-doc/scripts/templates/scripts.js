@@ -182,9 +182,12 @@ window.copyCard = function(btn){
     setTimeout(function(){ btn.textContent = '复制'; }, 1500);
   });
 };
-// ===== 联合类型变体 tab（union payload） =====
-// 同页可能有多处 union（不同接口的 payload），用 data-union-variant "<gid>-<i>" 隔离。
-// 点 tab → 同卡片内同 gid 的 .union-variant 按 i 匹配切换可见。事件委托到 document。
+// ===== 联合类型变体 tab（union payload，支持任意层嵌套） =====
+// 每层 union 一组 tab，按钮带 data-union-variant="<gid>-<i>"。
+// 每行 .union-variant 带 data-union-group（空格分隔多个 "<gid>-<i>"），表示
+// 「该行同时归属这些变体分支」——嵌套时是内层变体 + 各祖先变体的并集。
+// 一行可见 ⟺ 其 data-union-group 中每个 token 对应的 tab 都 active。
+// 点 tab：切本组 active，然后重算卡片内所有 .union-variant 的可见性。
 document.addEventListener('click', function(e){
   var btn = e.target.closest && e.target.closest('.union-tab');
   if(!btn || !btn.dataset.unionVariant) return;
@@ -196,10 +199,19 @@ document.addEventListener('click', function(e){
   });
   var card = btn.closest('.doc-card');
   if(!card) return;
+  // tab active 表：<gid>-<i> → 是否 active
+  var activeMap = {};
+  card.querySelectorAll('.union-tab').forEach(function(t){
+    activeMap[t.dataset.unionVariant] = t.classList.contains('active');
+  });
   card.querySelectorAll('.union-variant').forEach(function(r){
-    var sameGroup = r.dataset.unionGroup && r.dataset.unionGroup.split('-')[0] === gid;
-    if(!sameGroup) return;
-    r.classList.toggle('active', r.dataset.unionGroup === key);
+    // 仅处理直接属于本 gid 的行（其最内 group token 归本 gid 管理）。
+    var groups = (r.dataset.unionGroup || '').trim().split(/\s+/);
+    var mine = groups.some(function(g){ return g.split('-')[0] === gid; });
+    if(!mine) return;
+    // 可见 ⟺ 每个归属 group 对应的 tab 都 active。
+    var visible = groups.every(function(g){ return activeMap[g]; });
+    r.classList.toggle('active', visible);
   });
 });
 

@@ -4,7 +4,37 @@ import "../models.tsp";
 using TypeSpec.Http;
 namespace TMS;
 
+enum MaterialType {
+  @doc("物料")
+  MATERIAL,
+  @doc("原材料")
+  RAW_MATERIAL
+}
 
+model MachiningRecordEdgeNode {
+  @doc("物料类型")
+  type: MaterialType;
+  @doc("物料编码")
+  code: string;
+  @doc("锭节号")
+  ingotNo?: string;
+  @doc("锭节顺序号")
+  ingotIndex?: string;
+}
+
+@doc("一变多")
+model MachiningRecordOneToManyEdge {
+  input: MachiningRecordEdgeNode;
+  outputs: MachiningRecordEdgeNode[];
+}
+
+@doc("多变一")
+model MachiningRecordManyToOneEdge {
+  inputs: MachiningRecordEdgeNode[];
+  output: MachiningRecordEdgeNode;
+}
+
+alias MachiningRecordEdge = MachiningRecordOneToManyEdge | MachiningRecordManyToOneEdge;
 
 @doc("加工记录")
 model MachiningRecordPayload {
@@ -16,6 +46,8 @@ model MachiningRecordPayload {
   processPlanVersion: string;
   @doc("工序号")
   operationNo: string;
+  @doc("输入输出物料清单")
+  edges: MachiningRecordEdge[];
 }
 
 @doc("材料投产风险放行单")
@@ -26,7 +58,6 @@ model MaterialRRRecordPayload {
   productOrderCode: string;
   ... Record<unknown>;
 }
-
 
 model PutHistoryRecord {
   @doc("发生时间")

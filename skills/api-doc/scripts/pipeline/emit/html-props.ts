@@ -23,6 +23,15 @@ export function generateParameterRow(param: ApiParameter): string {
 }
 
 export function generatePropertyRows(properties: ApiProperty[], level: number): string {
+  return generatePropertyRowsWithGroup(properties, level, "");
+}
+
+// 嵌套 union 的处理：外层 union 用 tagUnionRows 给变体内部所有行（含内嵌 union 的
+// tabs-row / variant 行）打上 data-union-group="<外层 gid>"。内层 union 调
+// generateUnionVariantGroups 再分配自己的 groupId，其 tagUnionRows 又给子行打
+// data-union-group="<内层 gid>"。两轮 tagUnionRows 串接后，每行最终同时带两层
+// data-union-group —— 外层控制父变体可见性，内层控制子变体可见性，互不干扰。
+function generatePropertyRowsWithGroup(properties: ApiProperty[], level: number, outerGroup: string): string {
   let html = "";
   for (const prop of properties) {
     // 扩展占位行（来自 `... Record<T>` spread）：固定渲染 ... | any | (空) | ...
@@ -59,19 +68,15 @@ export function generatePropertyRows(properties: ApiProperty[], level: number): 
       `<td>${docHtml}</td>` +
       `</tr>\n`;
 
-    // 嵌套对象/数组元素对象 → 递归展开字段行
-    if (prop.type.kind === "object") {
-      html += generatePropertyRows(prop.type.properties, level + 1);
-    }
-    if (
-      prop.type.kind === "array" &&
-      prop.type.elementType.kind === "object"
-    ) {
-      html += generatePropertyRows(prop.type.elementType.properties, level + 1);
-    }
-    // 联合类型 → 每个变体用分组表头行 + 独立 tbody，点击 tab 切换可见性
-    if (prop.type.kind === "union") {
-      html += generateUnionVariantGroups(prop.type.variants, level + 1);
+    // 递归展开子结构：对象 / 对象数组 / 联合 / 联合数组。
+    // 联合数组即「元素为多选一的数组」，此前 array<union> 被静默丢弃，
+    // 导致联合类型内部再嵌套联合（如 edges: (A | B)[]）时内层不渲染。
+    const childType = prop.type.kind === "array" ? prop.type.elementType : prop.type;
+    if (childType.kind === "object") {
+      html += generatePropertyRowsWithGroup(childType.properties, level + 1, outerGroup);
+    } else if (childType.kind === "union") {
+      // 联合类型 → 每个对象变体一组 tab，点击切换可见性
+      html += generateUnionVariantGroups(childType.variants, level + 1, outerGroup);
     }
   }
   return html;
@@ -87,7 +92,7 @@ export function resetUnionGroupSeq(): void {
   unionGroupSeq = 0;
 }
 
-export function generateUnionVariantGroups(variants: ApiType[], level: number): string {
+export function generateUnionVariantGroups(variants: ApiType[], level: number, outerGroup = ""): string {
   const objectVariants = variants.filter((v) => v.kind === "object" && v.properties);
   if (objectVariants.length < 2) return "";
 
@@ -106,26 +111,61 @@ export function generateUnionVariantGroups(variants: ApiType[], level: number): 
   html += `</div></td></tr>\n`;
 
   objectVariants.forEach((v, i) => {
-    // 给本变体的每个字段行打标：data-union-group + union-variant（首变体 active）。
-    // generatePropertyRows 产出 <tr>...</tr>，逐行注入 class/attr。
+    // 本变体字段行打本层 data-union-group="<gid>-<i>"，首变体 active。
+    // 嵌套时外层 tagUnionRows 把外层 group 并入 data-union-group，并按「内外 active 取 AND」
+    // 修正可见性——故此处只需表达「本层首变体可见、其余隐藏」。
     const variantClass = i === 0 ? "union-variant active" : "union-variant";
-    const groupAttr = `data-union-group="${groupId}-${i}"`;
-    const rows = generatePropertyRows(v.properties!, level);
-    html += tagUnionRows(rows, variantClass, groupAttr);
+    const rows = generatePropertyRowsWithGroup(v.properties!, level, `${groupId}-${i}`);
+    html += tagUnionRows(rows, variantClass, `${groupId}-${i}`, outerGroup);
   });
   return html;
 }
 
 // 给 generatePropertyRows 产出的每条 <tr> 注入 class 与 data 属性。
 // 行形如 `<tr>...` 或 `<tr class="x">...`，统一改写首标签。
-function tagUnionRows(rowsHtml: string, cls: string, attr: string): string {
-  return rowsHtml.replace(/<tr(\s[^>]*)?>/g, (m, attrs) => {
+// 嵌套 union 时内层行已带自己的 class + data-union-group；外层 tagUnionRows 分两类处理：
+//   - 有内层 data-union-group（内层变体行或其字段）：可见性按 AND（内外层都 active 才 active），
+//     data-union-group 合并（内层 ∪ 外层）。
+//   - 无内层 data-union-group（结构行 union-tabs-row，或不在任何内层 union 的普通字段）：
+//     直接采用外层可见性，data-union-group 只挂外层 group。
+// selfGroup：本层变体标识；outerGroup：所有祖先变体标识（可多个，空格分隔）。
+function tagUnionRows(rowsHtml: string, cls: string, selfGroup: string, outerGroup: string): string {
+  const groups = outerGroup ? `${selfGroup} ${outerGroup}` : selfGroup;
+  const outerActive = cls.includes("active");
+  return rowsHtml.replace(/<tr(\s[^>]*)?>/g, (_m, attrs) => {
     const existing = attrs || "";
-    // 合并已有 class（如 field 行无 class，扩展占位行也无）
-    if (/\sclass="/.test(existing)) {
-      return `<tr${existing.replace(/class="([^"]*)"/, `class="$1 ${cls}"`)} ${attr}>`;
+    const hasInnerGroup = / data-union-group="/.test(existing);
+    let outTag: string;
+
+    if (hasInnerGroup) {
+      // 内层变体行 / 其字段：可见性 AND，group 合并
+      outTag = `<tr${existing.replace(/class="([^"]*)"/, (_full, prev: string) => {
+        const set = new Set(prev.trim().split(/\s+/));
+        const innerActive = set.has("active");
+        set.delete("active");
+        cls.split(/\s+/).forEach((c) => { if (c && c !== "active") set.add(c); });
+        if (outerActive && innerActive) set.add("active");
+        return `class="${Array.from(set).join(" ")}"`;
+      })}>`;
+      outTag = outTag.replace(/ data-union-group="([^"]*)"/, (_full, prev: string) => {
+        const set = new Set(groups.split(/\s+/));
+        prev.split(/\s+/).forEach((g) => set.add(g));
+        return ` data-union-group="${Array.from(set).join(" ")}"`;
+      });
+    } else {
+      // 结构行（tab 条）或普通字段：直接采用外层可见性，只挂外层 group
+      if (/\sclass="/.test(existing)) {
+        outTag = `<tr${existing.replace(/class="([^"]*)"/, (_full, prev: string) => {
+          const set = new Set(prev.trim().split(/\s+/));
+          cls.split(/\s+/).forEach((c) => c && set.add(c));
+          return `class="${Array.from(set).join(" ")}"`;
+        })}>`;
+      } else {
+        outTag = `<tr class="${cls}"${existing}>`;
+      }
+      outTag = outTag.replace(/>\s*$/, ` data-union-group="${groups}">`);
     }
-    return `<tr class="${cls}"${existing} ${attr}>`;
+    return outTag;
   });
 }
 
