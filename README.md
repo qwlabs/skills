@@ -5,7 +5,7 @@ A collection of Claude Code skills. Each skill is a self-contained tool that sol
 ## Installation
 
 ```bash
-npx -y skills add https://smithery.ai/skills/qwlabs/api-doc
+npx skills@latest add qwlabs/skills
 ```
 
 No additional configuration is needed after installation.
