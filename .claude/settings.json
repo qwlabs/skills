@@ -1,23 +1,40 @@
 {
+  "env": {
+    "PONYTAIL_DEFAULT_MODE": "ultra",
+    "PONYTAIL_HIDE_STATUS": "1"
+  },
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
-      "Bash(rtk *)",
-      "Bash(bun *)",
-      "Bash(open *)",
-      "WebFetch(*)"
+      "mcp__codegraph__*"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "codegraph prompt-hook"
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
-    "claude-mem@thedotmack": true,
-    "frontend-design@claude-plugins-official": true,
+    "mattpocock-skills@mattpocock": true,
+    "typescript-lsp@anthropic-plugin-directory": true,
     "ponytail@ponytail": true
   },
-  "extraKnownMarketplaces": {
-    "thedotmack": {
-      "source": {
-        "source": "github",
-        "repo": "thedotmack/claude-mem"
-      }
+  "mcpServers": {
+    "codegraph": {
+      "type": "stdio",
+      "command": "codegraph",
+      "args": [
+        "serve",
+        "--mcp"
+      ],
+      "alwaysLoad": true
     }
   }
 }

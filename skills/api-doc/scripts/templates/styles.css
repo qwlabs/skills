@@ -157,3 +157,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
 .union-tab.active .union-tab-name{opacity:.9}
 .union-variant{display:none}
 .union-variant.active{display:table-row}
+/* ===== 参数表层级折叠 + 搜索 =====
+   折叠状态由 class 组合表达,tr 上的语义:
+   - .tree-collapsed:该行自身收起(子行隐藏由 JS 给子行加 .tree-hidden)
+   - .tree-hidden:被某个祖先折叠而隐藏
+   - .tree-caret:行内 ▸/▾ 把手,展开态旋转 90°
+   - .tree-guides:祖先参考线(竖虚线),对齐各祖先的把手位置(15px/级)
+   搜索:命中行 .tree-hit 高亮;搜索态下行可见 ⟺ 自身命中或后代命中,
+   命中节点的祖先自动展开,非命中行暂时隐藏(清空搜索即恢复用户折叠状态)。 */
+tr.tree-collapsed > td:first-child .tree-caret{transform:rotate(0deg)}
+tr.tree-hidden{display:none}
+.tree-caret{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;margin-right:2px;border-radius:4px;color:var(--doc-accent);font-size:12px;transform:rotate(90deg);cursor:pointer;user-select:none;transition:transform 0.12s}
+.tree-caret:hover{background:var(--doc-accent-subtle)}
+.tree-leaf-space{display:inline-block;width:18px;flex:none}
+.tree-guides{position:absolute;inset:0;pointer-events:none}
+.tree-guides i{position:absolute;top:0;bottom:0;width:1px;background:var(--doc-accent-subtle)}
+.tree-guides i.tree-guide-last{background:var(--doc-accent);opacity:.25}
+.tree-guides i.tree-guide-last{width:2px;border-radius:1px}
+td.field-name-cell{position:relative}
+.tree-search-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 12px}
+.tree-search-input{border:1px solid var(--doc-border-input);border-radius:6px;padding:4px 10px;font-size:12px;width:230px;outline:none;font-family:inherit;background:var(--doc-section-bg);color:var(--doc-text-primary)}
+.tree-search-input:focus{border-color:var(--doc-accent);box-shadow:0 0 0 2px var(--doc-accent-subtle)}
+.tree-btn{border:1px solid var(--doc-border-input);background:var(--doc-section-bg);color:var(--doc-text-primary);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.tree-btn:hover{border-color:var(--doc-accent);color:var(--doc-accent)}
+.tree-count{font-size:12px;color:var(--doc-text-muted)}
+tr.tree-hit > td{background:var(--doc-field-conditional-bg) !important;box-shadow:inset 0 0 0 1px var(--doc-field-conditional-color)}

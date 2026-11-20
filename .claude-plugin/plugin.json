@@ -1,7 +1,6 @@
 {
   "name": "qwlabs-skills",
   "skills": [
-    "./skills/api-doc",
-    "./skills/explicit-architecture"
+    "./skills/api-doc"
   ]
 }

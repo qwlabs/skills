@@ -216,3 +216,202 @@ document.addEventListener('click', function(e){
 });
 
 })();
+
+// ===== 参数表层级折叠 + 搜索 =====
+// 从表格 DOM 重建字段树:indent class 挂在首个 td(field-name-cell field-indent-N)上,
+// tr 自身无缩进信息。父行折叠 ⟺ tr.tree-collapsed,子行隐藏 ⟺ tr.tree-hidden。
+// 与 union tab 互不干扰:折叠/搜索只切换 .tree-* class,union 可见性仍由
+// .union-variant.active 管理;两者同时生效时,行可见 = 树可见 AND union 可见
+// (display:none 的两个来源各自独立,后者由 union 逻辑控制)。
+// 搜索:命中行 .tree-hit 高亮;命中节点的祖先自动展开,非命中行隐藏;清空恢复。
+(function(){
+'use strict';
+
+function el(tag, cls, text){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(text != null) e.textContent = text;
+  return e;
+}
+function rowDepth(tr){
+  var td = tr.cells[0];
+  var m = td && (td.className || '').match(/field-indent-(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+// 把一个 <table> 解析成节点树。仅收集「树形 UI 需要的」信息:
+// row / depth / parent / children / name / doc / type。
+function parseTable(table){
+  var rows = [];
+  for(var b = 0; b < table.tBodies.length; b++){
+    for(var i = 0; i < table.tBodies[b].rows.length; i++) rows.push(table.tBodies[b].rows[i]);
+  }
+  var root = { row: null, depth: -1, parent: null, children: [] };
+  var stack = [root];
+  rows.forEach(function(tr){
+    var d;
+    if(tr.classList.contains('union-tabs-row')){
+      // tab 条无 indent class,挂在当前栈顶(与其后变体首层字段同级)
+      d = stack[stack.length - 1].depth + 1;
+    } else {
+      d = rowDepth(tr);
+      while(stack.length > 1 && stack[stack.length - 1].depth >= d) stack.pop();
+    }
+    var cells = tr.cells;
+    var node = {
+      row: tr,
+      depth: d,
+      parent: stack[stack.length - 1],
+      children: [],
+      name: tr.classList.contains('union-tabs-row')
+        ? '(联合变体)'
+        : (tr.querySelector('.field-name') || { textContent: '' }).textContent.trim(),
+      doc: cells.length ? cells[cells.length - 1].textContent.trim() : '',
+      type: (tr.querySelector('.field-name-cell .field-type, .field-type') || { textContent: '' }).textContent.trim()
+    };
+    stack[stack.length - 1].children.push(node);
+    stack.push(node);
+  });
+  root.table = table;
+  return root;
+}
+
+function walk(n, fn){ n.children.forEach(function(c){ fn(c); walk(c, fn); }); }
+
+// 建行 → 节点索引,折叠点击/搜索时 O(1) 查节点。
+function indexNodes(root){
+  var byRow = new Map();
+  walk(root, function(n){ byRow.set(n.row, n); });
+  return byRow;
+}
+
+function initTreeTable(table){
+  var root = parseTable(table);
+  var byRow = indexNodes(root);
+  var searchInput = null, countEl = null;
+
+  function setCollapsed(node, coll){
+    node.row.classList.toggle('tree-collapsed', coll);
+    walk(node, function(c){ c.row.classList.toggle('tree-hidden', coll); });
+  }
+
+  // 命中判定:name/doc 小写包含查询串。
+  function matchNode(n, q){
+    return (n.name + ' ' + n.doc).toLowerCase().indexOf(q) >= 0;
+  }
+
+  // 搜索框为空:恢复用户折叠状态 —— 收起的父行重新隐藏其子行,清除命中痕迹。
+  function clearSearch(){
+    walk(root, function(n){
+      n.row.classList.remove('tree-hit');
+      n.row.classList.remove('tree-hidden');
+      if(n.row.classList.contains('tree-collapsed')){
+        walk(n, function(c){ c.row.classList.add('tree-hidden'); });
+      }
+    });
+    if(countEl) countEl.textContent = '';
+    if(searchInput) searchInput.placeholder = '搜索字段名 / 说明…';
+  }
+
+  // 搜索态:命中行高亮,非命中行隐藏,命中节点的祖先自动展开。
+  // 不可见变体(union 未激活分支)的行不参与命中,避免搜出看不见的行。
+  function runSearch(q){
+    if(!q){ clearSearch(); return; }
+    var amap = {};
+    table.querySelectorAll('.union-tab').forEach(function(t){
+      amap[t.getAttribute('data-union-variant')] = t.classList.contains('active');
+    });
+    // 命中以节点对象为 key 存 Set:parseTable 不生成 id 字段,用对象身份即可。
+    var hits = new Set();
+    walk(root, function(n){
+      var g = n.row.getAttribute('data-union-group');
+      var uvis = !g || g.trim().split(/\s+/).every(function(t){ return amap[t]; });
+      if(uvis && matchNode(n, q)) hits.add(n);
+    });
+    var keeps = function(n){ return hits.has(n) || n.children.some(keeps); };
+    walk(root, function(n){
+      if(!keeps(n)){
+        n.row.classList.add('tree-hidden');
+        n.row.classList.remove('tree-hit');
+      } else {
+        n.row.classList.remove('tree-hidden');
+        if(n.children.length) setCollapsed(n, false);
+        n.row.classList.toggle('tree-hit', hits.has(n));
+      }
+        // 祖先自动展开由 keeps() 递归保证:凡 keeps 且有子 → 展开
+    });
+    if(countEl) countEl.textContent = hits.size ? (hits.size + ' 个匹配') : '无匹配';
+  }
+
+  // —— UI 装配 ——
+  // 工具条:搜索框 + 全部展开/全部折叠。插在表格标题(section-title)后。
+  // 只有存在可折叠结构(任一行有子)时才装配。
+  var hasBranch = root.children.some(function(c){ return c.children.length; });
+  if(hasBranch){
+    var section = table.closest('.section');
+    var title = section && section.querySelector('.section-title');
+    var bar = el('div', 'tree-search-bar');
+    var input = el('input', 'tree-search-input');
+    input.type = 'search';
+    input.placeholder = '搜索字段名 / 说明…';
+    var btnAll = el('button', 'tree-btn', '全部展开'); btnAll.type = 'button';
+    var btnNone = el('button', 'tree-btn', '全部折叠'); btnNone.type = 'button';
+    var count = el('span', 'tree-count');
+    bar.appendChild(input); bar.appendChild(btnAll); bar.appendChild(btnNone); bar.appendChild(count);
+    if(title && title.nextSibling) section.insertBefore(bar, title.nextSibling);
+    else if(section) section.appendChild(bar);
+    searchInput = input; countEl = count;
+
+    input.addEventListener('input', function(){ runSearch(input.value.trim().toLowerCase()); });
+
+    btnAll.addEventListener('click', function(){
+      walk(root, function(n){
+        n.row.classList.remove('tree-hidden');
+        if(n.children.length) setCollapsed(n, false);
+          });
+      });
+    btnNone.addEventListener('click', function(){
+      walk(root, function(n){ if(n.children.length) setCollapsed(n, true); });
+    });
+
+    // 树形化:参考线 + 把手 + leaf 占位
+    walk(root, function(n){
+      var td = n.row.cells[0];
+      if(!td) return;
+      td.classList.add('tree-cell');
+      if(n.depth >= 1){
+        var guides = el('div', 'tree-guides');
+        for(var k = 0; k < n.depth; k++){
+          var g = el('i');
+          g.style.left = (15 * (k + 1) - 7) + 'px';
+          guides.appendChild(g);
+        }
+        td.appendChild(guides);
+      }
+      if(n.children.length){
+        var caret = el('span', 'tree-caret', '▸');
+        td.insertBefore(caret, td.firstChild);
+      } else {
+        td.insertBefore(el('span', 'tree-leaf-space'), td.firstChild);
+      }
+    });
+
+    // 把手点击切换折叠(事件委托)。union tab 点击不触发。
+    table.addEventListener('click', function(e){
+      if(!e.target.closest) return;
+      if(e.target.closest('.union-tab')) return;
+      var caret = e.target.closest('.tree-caret');
+      if(!caret) return;
+      var tr = caret.closest('tr');
+      var node = byRow.get(tr);
+      if(node && node.children.length){
+        setCollapsed(node, !node.row.classList.contains('tree-collapsed'));
+      }
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('table.param-table').forEach(initTreeTable);
+});
+})();

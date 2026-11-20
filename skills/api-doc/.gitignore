@@ -3,3 +3,4 @@ node_modules
 output.html
 output-*.html
 samples/*.html
+prototype/*
