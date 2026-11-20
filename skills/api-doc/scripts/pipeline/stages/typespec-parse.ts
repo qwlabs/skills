@@ -504,7 +504,9 @@ function collectInheritedProperties(model: Model): Map<string, ModelProperty> {
 function getExampleValue(target: Type): unknown {
   for (const dec of (target as any).decorators || []) {
     if (dec.definition?.name === "@example" && dec.args.length > 0) {
-      return dec.args[0].jsValue;
+      // jsValue 可能是 EnumValue/EnumMember 等编译期对象（含循环引用），
+      // 需经 deepCloneValue 规约为字面量，否则 curl-generate 的 JSON.stringify 崩溃。
+      return deepCloneValue(dec.args[0].jsValue);
     }
   }
   return undefined;
