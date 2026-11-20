@@ -166,7 +166,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;l
    搜索:命中行 .tree-hit 高亮;搜索态下行可见 ⟺ 自身命中或后代命中,
    命中节点的祖先自动展开,非命中行暂时隐藏(清空搜索即恢复用户折叠状态)。 */
 tr.tree-collapsed > td:first-child .tree-caret{transform:rotate(0deg)}
-tr.tree-hidden{display:none}
+/* specificity 需 ≥ .union-variant.active(0,2,0)：否则折叠(alias union 首变体)时
+   子行加了 tree-hidden 仍被 display:table-row 压住，收缩失效 */
+tr.tree-hidden,tr.tree-hidden.union-variant,tr.tree-hidden.union-variant.active{display:none}
 .tree-caret{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;margin-right:2px;border-radius:4px;color:var(--doc-accent);font-size:12px;transform:rotate(90deg);cursor:pointer;user-select:none;transition:transform 0.12s}
 .tree-caret:hover{background:var(--doc-accent-subtle)}
 .tree-leaf-space{display:inline-block;width:18px;flex:none}
